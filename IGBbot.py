@@ -7,17 +7,22 @@ from unidecode import unidecode
 from bs4 import BeautifulSoup
 import random
 
-load_dotenv()
+load_dotenv() # Load the .env file with environment variables like DISCORD_TOKEN
 
+# Create a bot instance setting the intents aka the permissions the bot will have
 intents = discord.Intents.default()
 intents.message_content = True
 
+# Create the bot instance with the command prefix and the intents
+# All functions that has the @bot.command() decorator will be considered as commands automatically
 bot = commands.Bot(command_prefix="!", intents=intents)
 
+# Debug message to check if the bot is ready
 @bot.command()
 async def bonjour(ctx):
   await ctx.send(f"Bonjour {ctx.author} !")
 
+# Command to generate a funny bullshit sentence from the website https://www.bullshitor.com/
 @bot.command()
 async def bullshit(ctx):
   bullshit_job = requests.get('https://www.bullshitor.com/bullshit_job.php')
@@ -27,10 +32,12 @@ async def bullshit(ctx):
   master_bullshit = "Le " + bullshit_job.text + "va " + bullshit_phrase.text.lower() + "lors du " + bullshit_meeting.text.lower() + "grâce au " + bullshit_tool.text.lower() + "."
   await ctx.send(master_bullshit)
 
+#TO
 @bot.command()
 async def TO(ctx):
   await ctx.send("TO y est bo")
 
+# Command to generate a random fact from the website https://www.secouchermoinsbete.fr/
 @bot.command()
 async def le_savais_tu(ctx):
   url = "https://api.secouchermoinsbete.fr/random"
@@ -44,6 +51,7 @@ async def le_savais_tu(ctx):
   await ctx.send(content)
   await ctx.send("https://tenor.com/view/skeletor-until-we-meet-again-goodbye-gif-7594892226715043729")
 
+# Command to throw a dice with a number of faces given by the user (between 1 and n)
 @bot.command()
 async def d(ctx, *, dice: str):
     
@@ -58,10 +66,11 @@ async def d(ctx, *, dice: str):
     result = random.randint(1, int(dice))
     await ctx.send(f"🎲 Résultat du dé à {dice} faces : {result}")
 
-### DEBUT PENDU ###
+### PENDU ###
 
-games_pendu = {}  # Dictionnaire pour stocker les parties en cours
+games_pendu = {}  # Dict storing the ongoing games. Key: channel ID, Value: game data
 
+# Command to start a new game of "pendu"
 @bot.command()
 async def pendu(ctx):
     """Démarrer une nouvelle partie de pendu"""
@@ -84,11 +93,12 @@ async def pendu(ctx):
     
     await ctx.send(f"🔤 Nouveau jeu de pendu !\nMot à deviner ({str(len(hidden_word))}) : {' '.join(hidden_word)} \nErreurs restantes : 6")
 
-# ALIAS POUR LA COMMANDE LETTRE
+# Alias for the command "lettre"
 @bot.command()
 async def l(ctx, letter: str):
     await lettre(ctx, letter)
 
+# Command to propose a letter for the "pendu" game
 @bot.command()
 async def lettre(ctx, letter: str):
     """Proposer une lettre pour le pendu"""
@@ -127,6 +137,7 @@ async def lettre(ctx, letter: str):
         else:
             await ctx.send(f"❌ Mauvais choix ! Erreurs restantes : {game['attempts']}\n{' '.join(game['hidden'])}")
 
+# Command to propose a word for the "pendu" game
 @bot.command()
 async def mot(ctx, *, word: str):
     """Proposer un mot pour le pendu"""
@@ -147,17 +158,19 @@ async def mot(ctx, *, word: str):
         else:
             await ctx.send(f"❌ Mauvais choix ! Erreurs restantes : {game['attempts']}\n{' '.join(game['hidden'])}")
 
-### FIN PENDU ###
+### END PENDU ###
 
-### DEBUT TELEPHONE ARABE ###
+### TELEPHONE ARABE ###
 
-game_telephone = {}  # Dictionnaire pour stocker les parties en cours
+game_telephone = {}  # Global dict storing the ongoing game.
 
+# Unique command to manage the "telephone arabe" game
 @bot.command()
 async def telephone(ctx, *, command: str = None):
 
-    global game_telephone  # Permet d'utiliser la variable globale
+    global game_telephone  # Use the global variable
 
+    # Command to create a new game of "telephone arabe"
     if command.startswith("new"):
         """Démarrer une nouvelle partie de téléphone arabe"""
 
@@ -182,6 +195,7 @@ async def telephone(ctx, *, command: str = None):
         
         await ctx.send("📞 Nouveau jeu de téléphone arabe !\nTapez `!telephone join` pour participer et `!telephone start` pour commencer.")
 
+    # Join the game
     elif command == "join":
         """Rejoindre une partie de téléphone arabe"""
 
@@ -199,11 +213,12 @@ async def telephone(ctx, *, command: str = None):
         
         game_telephone["players"].append(ctx.author)
 
-        # Envoi d'un message privé pour confirmer l'inscription
+        # Send a DM to the player
         await ctx.author.send(f"✅ Vous avez rejoint la partie de téléphone arabe dans {ctx.channel} !")
         
         await ctx.send(f"✅ {ctx.author.mention} a rejoint la partie !")
 
+    # Start the game
     elif command == "start":
         """Démarrer une partie de téléphone arabe"""
         
@@ -219,6 +234,7 @@ async def telephone(ctx, *, command: str = None):
         await first_player.send("📞 Vous commencez la partie de téléphone arabe !\nÉcrivez le début de l'histoire. Le prochain joueur la continuera à partir de vos derniers mots.\nUtilisez `!telephone send votre-histoire`.\n*Vous devez écrire 5 mots au minimum")        
         await game_telephone["channel"].send(f"📞 La partie de téléphone arabe commence avec {first_player.mention}")
 
+    # Send a part of the story (only in DM)
     elif command.startswith("send "):
         """Envoyer un message pour la partie de téléphone arabe depuis les DM"""
 
@@ -263,10 +279,12 @@ async def telephone(ctx, *, command: str = None):
             await game_telephone["channel"].send(f"📞 Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de continuer l'histoire.")
             await game_telephone["current"].send(f"📞 C'est à votre tour dans la partie de téléphone arabe !\nContinuez l'histoire à partir de :\n{end_of_phrase}\nUtilisez `!telephone send votre-histoire`.")
 
+    # Stop the game
     elif command == "stop":
         """Arrêter une partie de téléphone arabe"""
         await stop_telephone(game_telephone["channel"])
 
+# Function to stop the game of "telephone arabe"
 async def stop_telephone(ctx):
     global game_telephone
 
@@ -282,6 +300,8 @@ async def stop_telephone(ctx):
         await user.send(f"📞 Fin de la partie de téléphone arabe !\nPhrase finale : {game_telephone['phrase']}")
 
     game_telephone = {}  # Réinitialisation
+
+### FIN TELEPHONE ARABE ###
 
 token = os.getenv("DISCORD_TOKEN")
 bot.run(token)
