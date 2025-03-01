@@ -8,6 +8,10 @@ from bs4 import BeautifulSoup
 import random
 from datetime import datetime, timezone, timedelta
 
+# POKER
+from IGBPoker import *
+
+
 load_dotenv() # Load the .env file with environment variables like DISCORD_TOKEN
 
 # Create a bot instance setting the intents aka the permissions the bot will have
@@ -337,6 +341,15 @@ async def stop_telephone(ctx):
     game_telephone = {}  # Réinitialisation
 
 ### FIN TELEPHONE ARABE ###
+
+### POKER DEBUT ###
+
+@bot.command()
+async def poker(ctx, command: str):
+    if command == "init":
+        await init(ctx)
+    if command == "join":
+        await join(ctx)
 
 token = os.getenv("DISCORD_TOKEN")
 bot.run(token)
