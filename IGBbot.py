@@ -6,6 +6,7 @@ import requests
 from unidecode import unidecode
 from bs4 import BeautifulSoup
 import random
+from datetime import datetime, timezone, timedelta
 
 load_dotenv() # Load the .env file with environment variables like DISCORD_TOKEN
 
@@ -21,6 +22,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 @bot.command()
 async def bonjour(ctx):
   await ctx.send(f"Bonjour {ctx.author} !")
+  await ctx.send("Je suis prêt à bullshit !")
 
 # Command to generate a funny bullshit sentence from the website https://www.bullshitor.com/
 @bot.command()
@@ -66,6 +68,39 @@ async def d(ctx, *, dice: str):
     result = random.randint(1, int(dice))
     await ctx.send(f"🎲 Résultat du dé à {dice} faces : {result}")
 
+@bot.command()
+async def dodo(ctx, *, heure_reveil: str):
+    """Calculer le temps de sommeil en fonction de l'heure de réveil"""
+
+    if not heure_reveil:
+        await ctx.send("C'est grâce mat' demain. Fais comme tu veux chef.")
+        return
+    
+    # Temp timezone fix for Paris
+    heure_actuelle = datetime.now() + timedelta(hours=1)
+
+    try:
+        heure_reveil = heure_actuelle.replace(hour=int(heure_reveil.split(":")[0]), minute=int(heure_reveil.split(":")[1]))
+
+        if heure_reveil < heure_actuelle:
+            heure_reveil += timedelta(days=1)
+    except ValueError:
+        await ctx.send("Format d'heure invalide. Utilisez HH:MM (ex: 07:30)")
+        return
+
+    temps_sommeil = heure_reveil - heure_actuelle
+
+    heures_sommeil = temps_sommeil.total_seconds() // 3600
+    minutes_sommeil = (temps_sommeil.total_seconds() % 3600) // 60
+    await ctx.send(f"{ctx.author.mention}, si tu vas te coucher maintenant, tu auras {str(int(heures_sommeil))} heures et {str(int(minutes_sommeil))} minutes de sommeil.")
+
+    if heures_sommeil >= 6:
+        await ctx.send("En vrai t'es large.")
+    elif heures_sommeil >= 4:
+        await ctx.send("C'est vraiment l'heure de dormir là.")
+    else:
+        await ctx.send("En vrai c'est trop tard, dors pas.")
+        
 ### PENDU ###
 
 games_pendu = {}  # Dict storing the ongoing games. Key: channel ID, Value: game data
