@@ -70,7 +70,7 @@ async def d(ctx, *, dice: str):
     await ctx.send(f"🎲 Résultat du dé à {dice} faces : {result}")
 
 @bot.command()
-async def dodo(ctx, *, heure_reveil: str):
+async def dodo(ctx, *, heure_reveil: str = None):
     """Calculer le temps de sommeil en fonction de l'heure de réveil"""
 
     if not heure_reveil:
@@ -143,25 +143,29 @@ async def pendu(ctx, *, command: str = None):
         leaderboard_mots = sorted(leaderboard_data.values(), key=lambda x: x["words"]["success"] / x["words"]["total"] if x["words"]["total"] > 0 else 0, reverse=True)
         #leaderboard_mots = [f"**{user['name']} :** {user['words']['success']} mot(s) trouvé(s) sur {user['words']['total']} tentative(s) - **{user['words']['success'] / user['words']['total']:.0%}**" for user in leaderboard_mots]
         message += "**🏆 Mots trouvés**\n\n"
-        for user in leaderboard_mots:
+        for i, user in enumerate(leaderboard_mots):
             if user["words"]["total"] > 0:
-                message += f"**{user['name']} :** {user['words']['success']} mot(s) trouvé(s) sur {user['words']['total']} tentative(s) - **{user['words']['success'] / user['words']['total']:.0%}**\n"
+                message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
+                message += f"**{user['name']} :** {user['words']['success']} / {user['words']['total']} essai(s) - **{user['words']['success'] / user['words']['total']:.0%}**\n"
 
         message += "\n\n"
 
         leaderboard_lettres = sorted(leaderboard_data.values(), key=lambda x: x["letters"]["success"] / x["letters"]["total"] if x["letters"]["total"] > 0 else 0, reverse=True)
         #leaderboard_lettres = [f"**{user['name']} :** {user['letters']['success']} lettre(s) trouvée(s) sur {user['letters']['total']} tentative(s) - **{user['letters']['success'] / user['letters']['total']:.0%}**" for user in leaderboard_lettres]
         message += "**🏆 Lettres trouvées**\n\n"
-        for user in leaderboard_lettres:
+        for i, user in enumerate(leaderboard_lettres):
             if user["letters"]["total"] > 0:
-                message += f"**{user['name']} :** {user['letters']['success']} lettre(s) trouvée(s) sur {user['letters']['total']} tentative(s) - **{user['letters']['success'] / user['letters']['total']:.0%}**\n"
+                message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
+                message += f"**{user['name']} :** {user['letters']['success']} / {user['letters']['total']} essai(s) - **{user['letters']['success'] / user['letters']['total']:.0%}**\n"
 
         message += "\n\n"
 
         leaderboard_started = sorted(leaderboard_data.values(), key=lambda x: x["started"], reverse=True)
-        leaderboard_started = [f"**{user['name']} :** {user['started']} partie(s) commencée(s)" for user in leaderboard_started]
+        #leaderboard_started = [f"**{user['name']} :** {user['started']} partie(s) commencée(s)" for user in leaderboard_started]
         message += "**🏆 Parties lancées**\n\n"
-        message += "\n".join(leaderboard_started)
+        for i, user in enumerate(leaderboard_started):
+            message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
+            message += f"**{user['name']} :** {user['started']} partie(s)\n"
 
         await ctx.send(message)
         return
@@ -184,8 +188,8 @@ async def pendu(ctx, *, command: str = None):
         "used_letters": set()
     }
 
-    if ctx.author.id not in leaderboard_data:
-        leaderboard_data[ctx.author.id] = {
+    if str(ctx.author.id) not in leaderboard_data:
+        leaderboard_data[str(ctx.author.id)] = {
             "name": ctx.author.name,
             "started": 1,
             "letters": {
@@ -200,7 +204,7 @@ async def pendu(ctx, *, command: str = None):
             }
         }
     else:
-        leaderboard_data[ctx.author.id]["started"] += 1
+        leaderboard_data[str(ctx.author.id)]["started"] += 1
 
     save_leaderboard()
     
@@ -240,16 +244,16 @@ async def lettre(ctx, letter: str):
         if "\_" not in game["hidden"]:
             await ctx.send(f"🎉 Bravo ! Le mot était **{game['word']}** !")
 
-            leaderboard_data[ctx.author.id]["words"]["success"] += 1
-            leaderboard_data[ctx.author.id]["words"]["total"] += 1
+            leaderboard_data[str(ctx.author.id)]["words"]["success"] += 1
+            leaderboard_data[str(ctx.author.id)]["words"]["total"] += 1
             save_leaderboard()
 
             del games_pendu[ctx.channel.id]
         else:
             await ctx.send(f"✅ Bien joué ! {' '.join(game['hidden'])}")
 
-            leaderboard_data[ctx.author.id]["letters"]["success"] += 1
-            leaderboard_data[ctx.author.id]["letters"]["total"] += 1
+            leaderboard_data[str(ctx.author.id)]["letters"]["success"] += 1
+            leaderboard_data[str(ctx.author.id)]["letters"]["total"] += 1
             save_leaderboard()
     else:
         game["attempts"] -= 1
@@ -257,16 +261,16 @@ async def lettre(ctx, letter: str):
         if game["attempts"] == 0:
             await ctx.send(f"❌ Perdu ! Le mot était **{game['word']}**...")
 
-            leaderboard_data[ctx.author.id]["words"]["failure"] += 1
-            leaderboard_data[ctx.author.id]["words"]["total"] += 1
+            leaderboard_data[str(ctx.author.id)]["words"]["failure"] += 1
+            leaderboard_data[str(ctx.author.id)]["words"]["total"] += 1
             save_leaderboard()
 
             del games_pendu[ctx.channel.id]
         else:
             await ctx.send(f"❌ Mauvais choix ! Erreurs restantes : {game['attempts']}\n{' '.join(game['hidden'])}")
 
-            leaderboard_data[ctx.author.id]["letters"]["failure"] += 1
-            leaderboard_data[ctx.author.id]["letters"]["total"] += 1
+            leaderboard_data[str(ctx.author.id)]["letters"]["failure"] += 1
+            leaderboard_data[str(ctx.author.id)]["letters"]["total"] += 1
             save_leaderboard()
 
 # Command to propose a word for the "pendu" game
@@ -282,15 +286,15 @@ async def mot(ctx, *, word: str):
     if unidecode(word.strip().upper()) == unidecode(game["word"].strip().upper()):
         await ctx.send(f"🎉 Bravo ! Le mot était **{game['word']}** !")
 
-        leaderboard_data[ctx.author.id]["words"]["success"] += 1
-        leaderboard_data[ctx.author.id]["words"]["total"] += 1
+        leaderboard_data[str(ctx.author.id)]["words"]["success"] += 1
+        leaderboard_data[str(ctx.author.id)]["words"]["total"] += 1
         save_leaderboard()
 
         del games_pendu[ctx.channel.id]
     else:
 
-        leaderboard_data[ctx.author.id]["words"]["failure"] += 1
-        leaderboard_data[ctx.author.id]["words"]["total"] += 1
+        leaderboard_data[str(ctx.author.id)]["words"]["failure"] += 1
+        leaderboard_data[str(ctx.author.id)]["words"]["total"] += 1
         save_leaderboard()
 
         game["attempts"] -= 1
