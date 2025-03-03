@@ -82,10 +82,10 @@ async def dodo(ctx, *, heure_reveil: str = None):
     heure_actuelle = datetime.now() + timedelta(hours=1)
 
     try:
-        if len(re.split(heure_reveil, r'[:h]')) != 2:
+        if len(re.split(r'[:h]', heure_reveil)) != 2:
           raise ValueError("L'utilisateur est idiot")
       
-        heure_reveil = heure_actuelle.replace(hour=int(re.split(heure_reveil, r'[:h]')[0]), minute=int(re.split(heure_reveil, r'[:h]')[1]))
+        heure_reveil = heure_actuelle.replace(hour=int(re.split(r'[:h]', heure_reveil)[0]), minute=int(re.split(r'[:h]', heure_reveil)[1]))
 
         if heure_reveil < heure_actuelle:
             heure_reveil += timedelta(days=1)
