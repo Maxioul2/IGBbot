@@ -8,6 +8,7 @@ from bs4 import BeautifulSoup
 import random
 from datetime import datetime, timezone, timedelta
 import json
+import re
 
 load_dotenv() # Load the .env file with environment variables like DISCORD_TOKEN
 
@@ -81,7 +82,10 @@ async def dodo(ctx, *, heure_reveil: str = None):
     heure_actuelle = datetime.now() + timedelta(hours=1)
 
     try:
-        heure_reveil = heure_actuelle.replace(hour=int(heure_reveil.split(":")[0]), minute=int(heure_reveil.split(":")[1]))
+        if len(re.split(heure_reveil, r'[:h]')) != 2:
+          raise ValueError("L'utilisateur est idiot")
+      
+        heure_reveil = heure_actuelle.replace(hour=int(re.split(heure_reveil, r'[:h]')[0]), minute=int(re.split(heure_reveil, r'[:h]')[1]))
 
         if heure_reveil < heure_actuelle:
             heure_reveil += timedelta(days=1)
