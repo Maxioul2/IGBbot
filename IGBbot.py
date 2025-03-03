@@ -412,6 +412,8 @@ async def telephone(ctx, *, command: str = None):
 
         game_telephone["current"] = game_telephone["players"][next_index]
 
+        await ctx.send("Histoire prise en compte ! Passge à la personne suivante")
+
         # Récupération des 3 derniers mots pour les afficher
         end_of_phrase = "..." + " ".join(game_telephone["phrase"].split()[-3:]) + "..."
 
