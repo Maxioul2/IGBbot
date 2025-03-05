@@ -6,7 +6,8 @@ import requests
 from unidecode import unidecode
 from bs4 import BeautifulSoup
 import random
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta
+from apscheduler.schedulers.background import BackgroundScheduler
 import json
 import re
 
@@ -108,6 +109,17 @@ async def dodo(ctx, *, heure_reveil: str = None):
         
 ### PENDU ###
 
+# Reset the hebdo leaderboard
+def reset_hebdo_leaderboard():
+    global hebdo_leaderboard_data
+    hebdo_leaderboard_data = {}
+    save_leaderboards()
+
+# Every Wednesday at 12:00, we reset the hebdo leaderboard
+scheduler = BackgroundScheduler()
+scheduler.add_job(reset_hebdo_leaderboard, 'cron', day_of_week='wed', hour=12)
+scheduler.start()
+
 # Get a random word from the file "mots.txt"
 def get_random_word():
     lines = open("data/mots.txt").read().splitlines()
@@ -124,11 +136,42 @@ def load_leaderboard():
     except FileNotFoundError:
         return {}
     
-def save_leaderboard():
+# Load the hebdo leaderboard from the file "hebdo_leaderboard.json"
+def load_hebdo_leaderboard():
+    try:
+        f = open("data/hebdo_leaderboard.json",)
+        return json.load(f)
+    except FileNotFoundError:
+        return {}
+    
+def leaderboard_letter_attempt(user_id, success: bool):
+    if success:
+        leaderboard_data[user_id]["letters"]["success"] += 1
+        hebdo_leaderboard_data[user_id]["letters"]["success"] += 1
+    else:
+        leaderboard_data[user_id]["letters"]["failure"] += 1
+        hebdo_leaderboard_data[user_id]["letters"]["failure"] += 1
+    leaderboard_data[user_id]["letters"]["total"] += 1
+    hebdo_leaderboard_data[user_id]["letters"]["total"] += 1
+
+def leaderboard_word_attempt(user_id, success: bool):
+    if success:
+        leaderboard_data[user_id]["words"]["success"] += 1
+        hebdo_leaderboard_data[user_id]["words"]["success"] += 1
+    else:
+        leaderboard_data[user_id]["words"]["failure"] += 1
+        hebdo_leaderboard_data[user_id]["words"]["failure"] += 1
+    leaderboard_data[user_id]["words"]["total"] += 1
+    hebdo_leaderboard_data[user_id]["words"]["total"] += 1
+    
+def save_leaderboards():
     with open("data/leaderboard.json", "w") as f:
         json.dump(leaderboard_data, f)
+    with open("data/hebdo_leaderboard.json", "w") as f:
+        json.dump(hebdo_leaderboard_data, f)
     
 leaderboard_data = load_leaderboard()
+hebdo_leaderboard_data = load_hebdo_leaderboard()
 
 games_pendu = {}  # Dict storing the ongoing games. Key: channel ID, Value: game data
 
@@ -136,13 +179,13 @@ games_pendu = {}  # Dict storing the ongoing games. Key: channel ID, Value: game
 @bot.command()
 async def pendu(ctx, *, command: str = None):
 
-    if command == "leaderboard":
+    if command == "all_time_leaderboard":
         """Afficher le classement du pendu"""
         if not leaderboard_data:
             await ctx.send("Aucune partie de pendu n'a été jouée.")
             return
         
-        message = ""
+        message = "📈 Classement :\n\n"
 
         leaderboard_mots = sorted(leaderboard_data.values(), key=lambda x: (x["words"]["success"] / x["words"]["total"] if x["words"]["total"] > 0 else 0, x["words"]["success"]), reverse=True)
         
@@ -173,9 +216,49 @@ async def pendu(ctx, *, command: str = None):
 
         await ctx.send(message)
         return
+    
+    if command == "hebdo_leaderboard" or command == "leaderboard":
+        """Afficher le classement du pendu"""
+        if not hebdo_leaderboard_data:
+            await ctx.send("Aucune partie de pendu n'a été jouée cette semaine.")
+            return
+        
+        message = "📅 Classement de la semaine :\n\n"
+
+        leaderboard_mots = sorted(hebdo_leaderboard_data.values(), key=lambda x: (x["words"]["success"] / x["words"]["total"] if x["words"]["total"] > 0 else 0, x["words"]["success"]), reverse=True)
+        
+        message += "**🏆 Mots trouvés**\n\n"
+        for i, user in enumerate(leaderboard_mots):
+            if user["words"]["total"] > 0:
+                message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
+                message += f"**{user['name']} :** {user['words']['success']} / {user['words']['total']} essai(s) - **{user['words']['success'] / user['words']['total']:.0%}**\n"
+
+        message += "\n\n"
+
+        leaderboard_lettres = sorted(hebdo_leaderboard_data.values(), key=lambda x: (x["letters"]["success"] / x["letters"]["total"] if x["letters"]["total"] > 0 else 0, x["letters"]["success"]), reverse=True)
+        
+        message += "**🏆 Lettres trouvées**\n\n"
+        for i, user in enumerate(leaderboard_lettres):
+            if user["letters"]["total"] > 0:
+                message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
+                message += f"**{user['name']} :** {user['letters']['success']} / {user['letters']['total']} essai(s) - **{user['letters']['success'] / user['letters']['total']:.0%}**\n"
+
+        message += "\n\n"
+
+        leaderboard_started = sorted(hebdo_leaderboard_data.values(), key=lambda x: x["started"], reverse=True)
+        
+        message += "**🏆 Parties lancées**\n\n"
+        for i, user in enumerate(leaderboard_started):
+            message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
+            message += f"**{user['name']} :** {user['started']} partie(s)\n"
+
+        await ctx.send(message)
+        return
 
     """Démarrer une nouvelle partie de pendu"""
     r = requests.get('https://trouve-mot.fr/api/random')
+    if len(r.json()[0]['name']) < 5:
+        r = requests.get('https://trouve-mot.fr/api/random')
     word = r.json()[0]['name'].upper()
 
     hidden_word = []
@@ -192,25 +275,32 @@ async def pendu(ctx, *, command: str = None):
         "used_letters": set()
     }
 
-    if str(ctx.author.id) not in leaderboard_data:
-        leaderboard_data[str(ctx.author.id)] = {
-            "name": ctx.author.name,
-            "started": 1,
-            "letters": {
-                "success": 0,
-                "failure": 0,
-                "total": 0
-            },
-            "words": {
-                "success": 0,
-                "failure": 0,
-                "total": 0
-            }
+    initial_stats = {
+        "name": ctx.author.name,
+        "started": 1,
+        "letters": {
+            "success": 0,
+            "failure": 0,
+            "total": 0
+        },
+        "words": {
+            "success": 0,
+            "failure": 0,
+            "total": 0
         }
+    }
+
+    if str(ctx.author.id) not in hebdo_leaderboard_data:
+        hebdo_leaderboard_data[str(ctx.author.id)] = initial_stats
+    else:
+        hebdo_leaderboard_data[str(ctx.author.id)]["started"] += 1
+
+    if str(ctx.author.id) not in leaderboard_data:
+        leaderboard_data[str(ctx.author.id)] = initial_stats
     else:
         leaderboard_data[str(ctx.author.id)]["started"] += 1
 
-    save_leaderboard()
+    save_leaderboards()
     
     await ctx.send(f"🔤 Nouveau jeu de pendu !\nMot à deviner ({str(len(hidden_word))}) : {' '.join(hidden_word)} \nErreurs restantes : 6")
 
@@ -250,7 +340,7 @@ async def lettre(ctx, letter: str):
 
             leaderboard_data[str(ctx.author.id)]["words"]["success"] += 1
             leaderboard_data[str(ctx.author.id)]["words"]["total"] += 1
-            save_leaderboard()
+            save_leaderboards()
 
             del games_pendu[ctx.channel.id]
         else:
@@ -258,7 +348,7 @@ async def lettre(ctx, letter: str):
 
             leaderboard_data[str(ctx.author.id)]["letters"]["success"] += 1
             leaderboard_data[str(ctx.author.id)]["letters"]["total"] += 1
-            save_leaderboard()
+            save_leaderboards()
     else:
         game["attempts"] -= 1
 
@@ -267,7 +357,7 @@ async def lettre(ctx, letter: str):
 
             leaderboard_data[str(ctx.author.id)]["words"]["failure"] += 1
             leaderboard_data[str(ctx.author.id)]["words"]["total"] += 1
-            save_leaderboard()
+            save_leaderboards()
 
             del games_pendu[ctx.channel.id]
         else:
@@ -275,7 +365,7 @@ async def lettre(ctx, letter: str):
 
             leaderboard_data[str(ctx.author.id)]["letters"]["failure"] += 1
             leaderboard_data[str(ctx.author.id)]["letters"]["total"] += 1
-            save_leaderboard()
+            save_leaderboards()
 
 # Command to propose a word for the "pendu" game
 @bot.command()
@@ -300,7 +390,7 @@ async def mot(ctx, *, word: str):
 
         leaderboard_data[str(ctx.author.id)]["words"]["success"] += 1
         leaderboard_data[str(ctx.author.id)]["words"]["total"] += 1
-        save_leaderboard()
+        save_leaderboards()
 
         del games_pendu[ctx.channel.id]
     else:
@@ -309,7 +399,7 @@ async def mot(ctx, *, word: str):
             if unidecode(char) not in unidecode(game["word"]):
                 leaderboard_data[str(ctx.author.id)]["letters"]["failure"] += 1
                 leaderboard_data[str(ctx.author.id)]["letters"]["total"] += 1
-        save_leaderboard()
+        save_leaderboards()
 
         game["attempts"] -= 1
         if game["attempts"] == 0:
@@ -432,14 +522,14 @@ async def telephone(ctx, *, command: str = None):
         end_of_phrase = "..." + " ".join(game_telephone["phrase"].split()[-3:]) + "..."
 
         if game_telephone["turn"] >= game_telephone["maxTurn"] and next_index == 0:
-            await game_telephone["channel"].send(f"📞 Message envoyé ! La partie de téléphone arabe est terminée !")
+            await game_telephone["channel"].send(f":telephone: Message envoyé ! La partie de téléphone arabe est terminée !")
             await stop_telephone(game_telephone["channel"])
-        elif game_telephone["turn"] >= game_telephone["maxTurn"] - 1 and next_index == len(game_telephone["players"]):
-            await game_telephone["channel"].send(f"📞 Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de terminer l'histoire.")
-            await game_telephone["current"].send(f"📞 C'est à vous de terminer l'histoire à partir de :\n{end_of_phrase}\nUtilisez `!telephone send votre-histoire`.")
+        elif game_telephone["turn"] >= (game_telephone["maxTurn"] - 1) and next_index == (len(game_telephone["players"]) - 1):
+            await game_telephone["channel"].send(f":telephone: Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de terminer l'histoire.")
+            await game_telephone["current"].send(f":telephone: C'est à vous de terminer l'histoire à partir de :\n{end_of_phrase}\nUtilisez `!telephone send votre-histoire`.")
         else:
-            await game_telephone["channel"].send(f"📞 Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de continuer l'histoire.")
-            await game_telephone["current"].send(f"📞 C'est à votre tour dans la partie de téléphone arabe !\nContinuez l'histoire à partir de :\n{end_of_phrase}\nUtilisez `!telephone send votre-histoire`.")
+            await game_telephone["channel"].send(f":telephone: Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de continuer l'histoire.")
+            await game_telephone["current"].send(f":telephone: C'est à votre tour dans la partie de téléphone arabe !\nContinuez l'histoire à partir de :\n{end_of_phrase}\nUtilisez `!telephone send votre-histoire`.")
 
     # Stop the game
     elif command == "stop":
@@ -455,11 +545,10 @@ async def stop_telephone(ctx):
         await ctx.send("Aucune partie en cours.")
         return
     
-    await ctx.send("📞 Fin de la partie de téléphone arabe !")
-    await ctx.send(f"Phrase finale : {game_telephone['phrase']}")
+    await ctx.send(f":telephone: Phrase finale : \n\n{game_telephone['phrase']}")
 
     for user in game_telephone["players"]:
-        await user.send(f"📞 Fin de la partie de téléphone arabe !\nPhrase finale : {game_telephone['phrase']}")
+        await user.send(f":telephone: Phrase finale : \n\n{game_telephone['phrase']}")
 
     game_telephone = {}  # Réinitialisation
 
