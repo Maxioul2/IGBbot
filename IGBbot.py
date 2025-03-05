@@ -475,8 +475,8 @@ async def telephone(ctx, *, command: str = None):
         game_telephone["current"] = first_player
         game_telephone["started"] = True
 
-        await first_player.send("📞 Vous commencez la partie de téléphone arabe !\nÉcrivez le début de l'histoire. Le prochain joueur la continuera à partir de vos derniers mots.\nUtilisez `!telephone send votre-histoire`.\n*Vous devez écrire 5 mots au minimum")        
-        await game_telephone["channel"].send(f"📞 La partie de téléphone arabe commence avec {first_player.mention}")
+        await first_player.send(":telephone: Vous commencez la partie de téléphone arabe !\nÉcrivez le début de l'histoire. Le prochain joueur la continuera à partir de vos derniers mots.\nUtilisez `!telephone send votre-histoire`.\n*Vous devez écrire 5 mots au minimum")        
+        await game_telephone["channel"].send(f":telephone: La partie de téléphone arabe commence avec {first_player.mention}")
 
     # Send a part of the story (only in DM)
     elif command.startswith("send "):
@@ -513,14 +513,20 @@ async def telephone(ctx, *, command: str = None):
         await ctx.send("Histoire prise en compte ! Passage à la personne suivante")
 
         # Récupération des 3 derniers mots pour les afficher
-        end_of_phrase = "..." + " ".join(game_telephone["phrase"].split()[-3:]) + "..."
+        last_words = game_telephone["phrase"].split()[-3:]
+
+        # Si un des mots fait 2 caractères ou moins, on rajoute le 4ème dernier mot
+        if any(len(word) <= 2 for word in last_words):
+            last_words = game_telephone["phrase"].split()[-4:]  # On prend les 4 derniers mots
+
+        end_of_phrase = "..." + " ".join(last_words) + "..."
 
         if game_telephone["turn"] >= game_telephone["maxTurn"] and next_index == 0:
             await game_telephone["channel"].send(f":telephone: Message envoyé ! La partie de téléphone arabe est terminée !")
             await stop_telephone(game_telephone["channel"])
         elif game_telephone["turn"] >= (game_telephone["maxTurn"] - 1) and next_index == (len(game_telephone["players"]) - 1):
-            await game_telephone["channel"].send(f":telephone: Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de terminer l'histoire.")
-            await game_telephone["current"].send(f":telephone: C'est à vous de terminer l'histoire à partir de :\n{end_of_phrase}\nUtilisez `!telephone send votre-histoire`.")
+            await game_telephone["channel"].send(f":telephone: Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de **terminer** l'histoire.")
+            await game_telephone["current"].send(f":telephone: C'est à vous de **terminer** l'histoire à partir de :\n{end_of_phrase}\nUtilisez `!telephone send votre-histoire`.")
         else:
             await game_telephone["channel"].send(f":telephone: Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de continuer l'histoire.")
             await game_telephone["current"].send(f":telephone: C'est à votre tour dans la partie de téléphone arabe !\nContinuez l'histoire à partir de :\n{end_of_phrase}\nUtilisez `!telephone send votre-histoire`.")
