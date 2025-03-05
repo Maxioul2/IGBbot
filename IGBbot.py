@@ -311,10 +311,13 @@ async def stop_telephone(ctx):
 
 @bot.command()
 async def poker(ctx, command: str):
-    if command == "init":
+    if command == "new":
         await init(ctx)
     if command == "join":
         await join(ctx)
-
+    if command == "display":
+        await display(ctx)
+    if command == "start":
+        await start(ctx)
 token = os.getenv("DISCORD_TOKEN")
 bot.run(token)
