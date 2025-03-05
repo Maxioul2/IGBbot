@@ -338,16 +338,14 @@ async def lettre(ctx, letter: str):
         if "\_" not in game["hidden"]:
             await ctx.send(f"🎉 Bravo ! Le mot était **{game['word']}** !")
 
-            leaderboard_data[str(ctx.author.id)]["words"]["success"] += 1
-            leaderboard_data[str(ctx.author.id)]["words"]["total"] += 1
+            leaderboard_word_attempt(str(ctx.author.id), True)
             save_leaderboards()
 
             del games_pendu[ctx.channel.id]
         else:
             await ctx.send(f"✅ Bien joué ! {' '.join(game['hidden'])}")
 
-            leaderboard_data[str(ctx.author.id)]["letters"]["success"] += 1
-            leaderboard_data[str(ctx.author.id)]["letters"]["total"] += 1
+            leaderboard_letter_attempt(str(ctx.author.id), True)
             save_leaderboards()
     else:
         game["attempts"] -= 1
@@ -355,16 +353,14 @@ async def lettre(ctx, letter: str):
         if game["attempts"] == 0:
             await ctx.send(f"❌ Perdu ! Le mot était **{game['word']}**...")
 
-            leaderboard_data[str(ctx.author.id)]["words"]["failure"] += 1
-            leaderboard_data[str(ctx.author.id)]["words"]["total"] += 1
+            leaderboard_word_attempt(str(ctx.author.id), False)
             save_leaderboards()
 
             del games_pendu[ctx.channel.id]
         else:
             await ctx.send(f"❌ Mauvais choix ! Erreurs restantes : {game['attempts']}\n{' '.join(game['hidden'])}")
 
-            leaderboard_data[str(ctx.author.id)]["letters"]["failure"] += 1
-            leaderboard_data[str(ctx.author.id)]["letters"]["total"] += 1
+            leaderboard_letter_attempt(str(ctx.author.id), False)
             save_leaderboards()
 
 # Command to propose a word for the "pendu" game
@@ -385,20 +381,18 @@ async def mot(ctx, *, word: str):
             if char == "\_":
                 if game["word"][i] not in game["used_letters"]:
                     game["used_letters"].add(game["word"][i])
-                    leaderboard_data[str(ctx.author.id)]["letters"]["success"] += 1
-                    leaderboard_data[str(ctx.author.id)]["letters"]["total"] += 1
+                    leaderboard_letter_attempt(str(ctx.author.id), True)
 
-        leaderboard_data[str(ctx.author.id)]["words"]["success"] += 1
-        leaderboard_data[str(ctx.author.id)]["words"]["total"] += 1
+        leaderboard_word_attempt(str(ctx.author.id), True)
         save_leaderboards()
 
         del games_pendu[ctx.channel.id]
     else:
 
+        # TODO: Reduce all multiple letters to 1 unique letter
         for i, char in enumerate(word):
             if unidecode(char) not in unidecode(game["word"]):
-                leaderboard_data[str(ctx.author.id)]["letters"]["failure"] += 1
-                leaderboard_data[str(ctx.author.id)]["letters"]["total"] += 1
+                leaderboard_letter_attempt(str(ctx.author.id), False)
         save_leaderboards()
 
         game["attempts"] -= 1
