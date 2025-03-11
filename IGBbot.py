@@ -7,7 +7,6 @@ from unidecode import unidecode
 from bs4 import BeautifulSoup
 import random
 from datetime import datetime, timedelta
-from apscheduler.schedulers.background import BackgroundScheduler
 import json
 import re
 
@@ -115,11 +114,6 @@ def reset_hebdo_leaderboard():
     hebdo_leaderboard_data = {}
     save_leaderboards()
 
-# Every Wednesday at 12:00, we reset the hebdo leaderboard
-scheduler = BackgroundScheduler()
-scheduler.add_job(reset_hebdo_leaderboard, 'cron', day_of_week='wed', hour=12)
-scheduler.start()
-
 # Get a random word from the file "mots.txt"
 def get_random_word():
     lines = open("data/mots.txt").read().splitlines()
@@ -169,6 +163,53 @@ def save_leaderboards():
         json.dump(leaderboard_data, f)
     with open("data/hebdo_leaderboard.json", "w") as f:
         json.dump(hebdo_leaderboard_data, f)
+
+async def send_leaderboard(ctx, type):
+    if type == "all_time":
+        data = leaderboard_data
+        title = "📈 Classement général"
+    elif type == "hebdo":
+        data = hebdo_leaderboard_data
+        title = "📅 Classement de la semaine" \
+        "\n\n*Le classement hebdomadaire est remis à zéro tous les mercredis à 12h00*"
+
+    if not ctx:
+        ctx = bot.get_channel(os.getenv("DISCORD_MAIN_CHANNEL"))
+
+    if not data:
+        await ctx.send("Aucune partie de pendu n'a été jouée.")
+        return
+    
+    message = f"{title} :\n\n"
+
+    leaderboard_mots = sorted(data.values(), key=lambda x: (x["words"]["success"] / x["words"]["total"] if x["words"]["total"] > 0 else 0, x["words"]["success"]), reverse=True)
+
+    message += "**🏆 Mots trouvés**\n\n"
+    for i, user in enumerate(leaderboard_mots):
+        if user["words"]["total"] > 0:
+            message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
+            message += f"**{user['name']} :** {user['words']['success']} / {user['words']['total']} essai(s) - **{user['words']['success'] / user['words']['total']:.0%}**\n"
+
+    message += "\n\n"
+
+    leaderboard_lettres = sorted(data.values(), key=lambda x: (x["letters"]["success"] / x["letters"]["total"] if x["letters"]["total"] > 0 else 0, x["letters"]["success"]), reverse=True)
+
+    message += "**🏆 Lettres trouvées**\n\n"
+    for i, user in enumerate(leaderboard_lettres):
+        if user["letters"]["total"] > 0:
+            message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
+            message += f"**{user['name']} :** {user['letters']['success']} / {user['letters']['total']} essai(s) - **{user['letters']['success'] / user['letters']['total']:.0%}**\n"
+
+    message += "\n\n"
+
+    leaderboard_started = sorted(data.values(), key=lambda x: x["started"], reverse=True)
+
+    message += "**🏆 Parties lancées**\n\n"
+    for i, user in enumerate(leaderboard_started):
+        message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
+        message += f"**{user['name']} :** {user['started']} partie(s)\n"
+
+    await ctx.send(message)
     
 leaderboard_data = load_leaderboard()
 hebdo_leaderboard_data = load_hebdo_leaderboard()
@@ -180,79 +221,13 @@ games_pendu = {}  # Dict storing the ongoing games. Key: channel ID, Value: game
 async def pendu(ctx, *, command: str = None):
 
     if command == "all_time_leaderboard":
-        """Afficher le classement du pendu"""
-        if not leaderboard_data:
-            await ctx.send("Aucune partie de pendu n'a été jouée.")
-            return
-        
-        message = "📈 Classement :\n\n"
-
-        leaderboard_mots = sorted(leaderboard_data.values(), key=lambda x: (x["words"]["success"] / x["words"]["total"] if x["words"]["total"] > 0 else 0, x["words"]["success"]), reverse=True)
-        
-        message += "**🏆 Mots trouvés**\n\n"
-        for i, user in enumerate(leaderboard_mots):
-            if user["words"]["total"] > 0:
-                message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
-                message += f"**{user['name']} :** {user['words']['success']} / {user['words']['total']} essai(s) - **{user['words']['success'] / user['words']['total']:.0%}**\n"
-
-        message += "\n\n"
-
-        leaderboard_lettres = sorted(leaderboard_data.values(), key=lambda x: (x["letters"]["success"] / x["letters"]["total"] if x["letters"]["total"] > 0 else 0, x["letters"]["success"]), reverse=True)
-        
-        message += "**🏆 Lettres trouvées**\n\n"
-        for i, user in enumerate(leaderboard_lettres):
-            if user["letters"]["total"] > 0:
-                message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
-                message += f"**{user['name']} :** {user['letters']['success']} / {user['letters']['total']} essai(s) - **{user['letters']['success'] / user['letters']['total']:.0%}**\n"
-
-        message += "\n\n"
-
-        leaderboard_started = sorted(leaderboard_data.values(), key=lambda x: x["started"], reverse=True)
-        
-        message += "**🏆 Parties lancées**\n\n"
-        for i, user in enumerate(leaderboard_started):
-            message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
-            message += f"**{user['name']} :** {user['started']} partie(s)\n"
-
-        await ctx.send(message)
+        """Afficher le classement général du pendu"""
+        await send_leaderboard(ctx, "all_time")
         return
     
     if command == "hebdo_leaderboard" or command == "leaderboard":
         """Afficher le classement du pendu"""
-        if not hebdo_leaderboard_data:
-            await ctx.send("Aucune partie de pendu n'a été jouée cette semaine.")
-            return
-        
-        message = "📅 Classement de la semaine :\n\n"
-
-        leaderboard_mots = sorted(hebdo_leaderboard_data.values(), key=lambda x: (x["words"]["success"] / x["words"]["total"] if x["words"]["total"] > 0 else 0, x["words"]["success"]), reverse=True)
-        
-        message += "**🏆 Mots trouvés**\n\n"
-        for i, user in enumerate(leaderboard_mots):
-            if user["words"]["total"] > 0:
-                message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
-                message += f"**{user['name']} :** {user['words']['success']} / {user['words']['total']} essai(s) - **{user['words']['success'] / user['words']['total']:.0%}**\n"
-
-        message += "\n\n"
-
-        leaderboard_lettres = sorted(hebdo_leaderboard_data.values(), key=lambda x: (x["letters"]["success"] / x["letters"]["total"] if x["letters"]["total"] > 0 else 0, x["letters"]["success"]), reverse=True)
-        
-        message += "**🏆 Lettres trouvées**\n\n"
-        for i, user in enumerate(leaderboard_lettres):
-            if user["letters"]["total"] > 0:
-                message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
-                message += f"**{user['name']} :** {user['letters']['success']} / {user['letters']['total']} essai(s) - **{user['letters']['success'] / user['letters']['total']:.0%}**\n"
-
-        message += "\n\n"
-
-        leaderboard_started = sorted(hebdo_leaderboard_data.values(), key=lambda x: x["started"], reverse=True)
-        
-        message += "**🏆 Parties lancées**\n\n"
-        for i, user in enumerate(leaderboard_started):
-            message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
-            message += f"**{user['name']} :** {user['started']} partie(s)\n"
-
-        await ctx.send(message)
+        await send_leaderboard(ctx, "hebdo")
         return
 
     """Démarrer une nouvelle partie de pendu"""
@@ -263,6 +238,8 @@ async def pendu(ctx, *, command: str = None):
 
     hidden_word = []
     for char in word:
+      if char == 'Œ':
+        hidden_word.append("OE")
       if char == '-':
         hidden_word.append("-")
       else:
@@ -553,6 +530,13 @@ async def stop_telephone(ctx):
     game_telephone = {}  # Réinitialisation
 
 ### FIN TELEPHONE ARABE ###
+
+@bot.command()
+async def shutdown(ctx):
+    """Shutdown the bot"""
+    await ctx.send("Arrêt du bot...")
+    await bot.close()
+    exit()
 
 token = os.getenv("DISCORD_TOKEN")
 bot.run(token)
