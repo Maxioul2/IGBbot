@@ -10,6 +10,10 @@ from datetime import datetime, timedelta
 import json
 import re
 
+va = ['va', 'doit', 'aimerait', 'est en train de']
+lors = ['lors du', 'pendant le', 'après le', 'après avoir programmé le']
+grace=['grâce au', 'avec l\'aide du', 'en utilisant le', 'en sappuyant sur le']
+
 load_dotenv() # Load the .env file with environment variables like DISCORD_TOKEN
 
 # Create a bot instance setting the intents aka the permissions the bot will have
@@ -23,8 +27,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Debug message to check if the bot is ready
 @bot.command()
 async def bonjour(ctx):
-  await ctx.send(f"Bonjour {ctx.author} !")
-  await ctx.send("Je suis prêt à bullshit !")
+  await ctx.send(f"Bonjour {ctx.author} !\nJe suis prêt à bullshit !")
 
 # Command to generate a funny bullshit sentence from the website https://www.bullshitor.com/
 @bot.command()
@@ -33,7 +36,7 @@ async def bullshit(ctx):
   bullshit_phrase = requests.get('https://www.bullshitor.com/bullshit_phrase.php')
   bullshit_meeting = requests.get('https://www.bullshitor.com/bullshit_meeting.php')
   bullshit_tool = requests.get('https://www.bullshitor.com/bullshit_tool.php')
-  master_bullshit = "Le " + bullshit_job.text + "va " + bullshit_phrase.text.lower() + "lors du " + bullshit_meeting.text.lower() + "grâce au " + bullshit_tool.text.lower() + "."
+  master_bullshit = "Le " + bullshit_job.text + random.choice(va) +" " + bullshit_phrase.text.lower() + random.choice(lors)+" " + bullshit_meeting.text.lower() + random.choice(grace) +" " + bullshit_tool.text.lower() + "."
   await ctx.send(master_bullshit)
 
 #TO
@@ -63,7 +66,7 @@ async def d(ctx, *, dice: str):
         await ctx.send("Le dé doit être un nombre entier positif. Exemple : `!d 6`")
         return
     
-    if int(dice) > 99999:
+    if int(dice) > 100000:
         await ctx.send("Arrête de jouer au plus con. Choisis un dé avec moins de 100 000 faces.")
         return
     
