@@ -14,6 +14,10 @@ va = ['va', 'doit', 'aimerait', 'est en train de']
 lors = ['lors du', 'pendant le', 'après le', 'après avoir programmé le']
 grace=['grâce au', 'avec l\'aide du', 'en utilisant le', 'en sappuyant sur le']
 
+# POKER
+from IGBPoker import *
+
+
 load_dotenv() # Load the .env file with environment variables like DISCORD_TOKEN
 
 # Create a bot instance setting the intents aka the permissions the bot will have
@@ -540,6 +544,27 @@ async def shutdown(ctx):
     await ctx.send("Arrêt du bot...")
     await bot.close()
     exit()
+
+### POKER DEBUT ###
+
+@bot.command()
+async def poker(ctx, command: str):
+    if command == "new":
+        await init(ctx)
+    if command == "join":
+        await join(ctx)
+    if command == "display":
+        await display(ctx, False)
+    if command == "start":
+        await start(ctx)
+    if command.startswith("reveal"):
+        await init_next_round(ctx, command.split()[1])
+    if command == "call":
+        await call_or_check_hand(ctx)
+    if command.startwith("raise"):
+        await raise_hand(ctx, int(command.split()[1]))
+    if command == "endgame":
+        await end_game(ctx)
 
 token = os.getenv("DISCORD_TOKEN")
 bot.run(token)
