@@ -316,8 +316,16 @@ async def poker(ctx, command: str):
     if command == "join":
         await join(ctx)
     if command == "display":
-        await display(ctx)
+        await display(ctx, False)
     if command == "start":
         await start(ctx)
+    if command.startswith("reveal"):
+        await init_next_round(ctx, command.split()[1])
+    if command == "call":
+        await call_or_check_hand(ctx)
+    if command.startwith("raise"):
+        await raise_hand(ctx, int(command.split()[1]))
+    if command == "endgame":
+        await end_game(ctx)
 token = os.getenv("DISCORD_TOKEN")
 bot.run(token)

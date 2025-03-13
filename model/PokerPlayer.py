@@ -16,3 +16,6 @@ class PokerPlayer:
         self.actual_bet = returned_value
         self.stack -= amount
         return returned_value
+    
+    def __eq__(self, other):
+        return self.ctx.name == other.ctx.name

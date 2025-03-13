@@ -13,6 +13,7 @@ CARDS = [
 
 game = {"initialized": False}
 
+# --------------------- PRIVATE METHODS ---------------------
 def get_player_line():
     display = ""
     for player in game["players"]:
@@ -29,6 +30,21 @@ def get_pot_display():
 def get_last_raise_display():
     return f"\t   **Dernière mise : ** {game["last_raise"]} 💰"
 
+def get_river_display():
+    river_display = "\t   **Rivière : **"
+    for card in game["river"]:
+        river_display += str(card) + " | "
+    return river_display[:-3]
+
+def get_players_hand_display():
+    display = ""
+    for player in game["players"]:
+        if not player.is_folded:
+            display += f"**{player.ctx.display_name}** : {str(player.hand[0])}, {str(player.hand[1])}\n"
+        else:
+            display += f"**{player.ctx.display_name}** : couché\n"
+    return display[:-1]
+
 def get_player(ctx):
     if not ctx.name in [player.ctx.name for player in game["players"]]:
         print(f"Player {ctx.display_name} not in the game.")
@@ -37,6 +53,9 @@ def get_player(ctx):
 
 def get_folded_players():
     return [player for player in game["players"] if player.is_folded]
+
+def get_remaining_players():
+    return [player for player in game["players"] if not player.is_folded]
 
 def draw_river():
     if len(game["river"]) == 5:
@@ -53,6 +72,14 @@ def reset_actual_bets():
     for player in game["players"]:
         player.actual_bet = 0
 
+def should_draw_river():
+    actual_bets_sum = sum([player.actual_bet for player in get_remaining_players()])
+    triggering_player = game["players"][game["players"].index(game["big_blind"] + 1 % len(game["players"]))]
+    return actual_bets_sum == len(get_remaining_players() * game["last_raise"]) and game["next_player"] == triggering_player
+
+# ---------------------------------------------------------
+
+# ------------------- DISCORD METHODS ---------------------
 async def init(ctx):
     global game
 
@@ -68,7 +95,8 @@ async def init(ctx):
         "pot": 0,
         "last_raise": 0,
         "initialized": True,
-        "started": False
+        "started": False,
+        "is_round_finished": False
     }
 
     game["shuffled_cards"] = CARDS.copy()
@@ -96,7 +124,7 @@ async def join(ctx):
     game["players"].append(player)
 
     await ctx.send(f"{ctx.author.mention} à rejoint la partie !")
-    await ctx.author.send(f"Tu as rejoins la partie de poker ! Voici tas main : {str(player.hand[0])}, {str(player.hand[1])}")
+    await ctx.author.send(f"Tu as rejoins la partie de poker ! Voici ta main : {str(player.hand[0])}, {str(player.hand[1])}")
 
 async def start(ctx):
     if len(game["players"]) < 2:
@@ -113,7 +141,7 @@ async def start(ctx):
     game["pot"] += start_big_blind
     game["last_raise"] = start_big_blind
 
-    await display(ctx)
+    await display(ctx, False)
     await ctx.send(f"La partie commence, c'est à {game["next_player"].ctx.mention} de jouer")
  
 async def fold_hand(ctx):
@@ -147,19 +175,24 @@ async def call_or_check_hand(ctx):
     
     game["pot"] += get_player(ctx).take_from_stack(game["last_raise"])
 
+    await display(ctx, False)
     set_next_player(game["next_player"])
 
-# TODO : gerer le cas ou tout les joueurs sont couché -> veux-tu reveal ?
-# TODO : si la riviere est complete, gerer la fin du round -> reveal, définir gagnant, faire tourner les rôles, reset le round
 async def set_next_player(ctx, player):
     if len(get_folded_players()) == len(game["players"]) - 1:
-        # le winer 
-    current_player_idx = game["players"].index(player)
+        await ctx.send(f"Bravo à {winner.ctx.mention} ! Tu as gagner ce tour. Veux-tu dévoiler tes cartes ? (`!poker reveal oui` ou `!poker reveal non`)")
+        game["is_round_finished"] = True
+        return
+    
+    if len(game["river"]) == 5 and should_draw_river():
+        await ctx.send("Le tour est terminé.")
+        await display(ctx, True)
 
-    if current_player_idx == len(game["players"]) - 1:
+    if should_draw_river():
         reset_actual_bets()
         draw_river()
-    
+
+    current_player_idx = game["players"].index(player)
     next_player = game["players"][(current_player_idx + 1) % len(game["players"])]
 
     if next_player["is_folded"]:
@@ -169,6 +202,45 @@ async def set_next_player(ctx, player):
         game["next_player"] = next_player
         await ctx.send(f"C'est au tour de {next_player["ctx"].mention} de jouer.")
 
-async def display(ctx):
+async def display(ctx, display_player_hand: bool):
     to_display = [get_player_line(), get_pot_display(), get_last_raise_display()]
+
+    if len(game["river"]) != 0:
+        to_display.append(get_river_display())
+
+    if display_player_hand:
+        to_display.append(get_players_hand_display())
+
     await ctx.send("\n".join(to_display))
+
+async def init_next_round(ctx, reveal):
+    if not game["is_round_finished"]:
+        return
+    
+    if reveal != None or reveal != "oui" or reveal != "non":
+        await ctx.send("Réponse invalide.")
+        return
+    
+    winner = get_remaining_players()[0]
+    await ctx.send(f"Bravo {winner.ctx.mention} ! Tu as gagné ce tour.")
+    if ("oui" == reveal):
+        await ctx.send(f"Les cartes de {winner.ctx.mention} étaient : {str(winner.hand[0])}, {str(winner.hand[1])}")
+
+    game["is_round_finished"] = False
+    game["shuffled_cards"] = CARDS.copy()
+    random.shuffle(game["shuffled_cards"])
+    game["river"] = []
+    game["small_blind"] = game["players"][game["players"].index(game["small_blind"]) + 1 % len(game["players"])]
+    game["big_blind"] = game["players"][game["players"].index(game["big_blind"]) + 1 % len(game["players"])]
+    game["next_player"] = game["small_blind"]
+    
+    for player in game["players"]:
+        player.hand = [game["shuffled_cards"].pop(), game["shuffled_cards"].pop()]
+        ctx.send(f"voici tes cartes pour le tour suivant : {str(player.hand[0])}, {str(player.hand[1])}")
+
+async def end_game(ctx):
+    global game
+    game = {"initialized": False}
+    await ctx.send("La partie est terminée.")
+
+# ---------------------------------------------------------
