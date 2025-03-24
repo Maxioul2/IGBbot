@@ -87,19 +87,34 @@ async def le_savais_tu(interaction):
     description="Jette un dé en fonction du nombre donné",
     guild=discord.Object(id=1304023564956995634)
 )
-async def d(interaction: discord.Interaction, nombre_de_faces: str):
-    dice = nombre_de_faces
-    
-    if not dice.isdigit() or int(dice) < 1:
-        await interaction.response.send_message("Le dé doit être un nombre entier positif. Exemple : `!d 6`")
+async def d(interaction: discord.Interaction, nombre_de_des: str, nombre_de_faces: str):
+    nb_dice = nombre_de_des
+    nb_face = nombre_de_faces
+    if not nb_dice.isdigit() or int(nb_dice) < 1:
+        await interaction.response.send_message("Le nombre de dé doit être un nombre entier positif. Exemple : `/dé 1 6`")
+        return
+
+    if not nb_face.isdigit() or int(nb_face) < 1:
+        await interaction.response.send_message("Le dé doit être un nombre entier positif. Exemple : `/dé 1 6`")
         return
     
-    if int(dice) > 100000:
+    if int(nb_dice) > 100:
+        await interaction.response.send_message("Arrête de jouer au plus con. Choisis un nombre de dé inférieur à 100.")
+        return
+    
+    if int(nb_face) > 100000:
         await interaction.response.send_message("Arrête de jouer au plus con. Choisis un dé avec moins de 100 000 faces.")
         return
     
-    result = random.randint(1, int(dice))
-    await interaction.response.send_message(f"🎲 Résultat du dé à {dice} faces : {result}")
+    
+    result = []
+    for _ in range(nb_dice):
+        result.append(randint(1, int(nb_face)))
+    
+    result_str = f"🎲 Résultat pour {nb_dice} dé(s) à {nb_face} faces :\n"
+    result_str += ",".join(map(str, result)) + "\n"
+    result_str += f"**Total : ** {sum(result)}" 
+    await interaction.response.send_message(result_str)
 
 
 # Calculer le sommeil
