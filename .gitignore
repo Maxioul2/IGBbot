@@ -1,3 +1,4 @@
 .env
+__pycache__
 data/leaderboard.json
 data/hebdo_leaderboard.json
