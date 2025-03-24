@@ -108,11 +108,11 @@ async def d(interaction: discord.Interaction, nombre_de_des: str, nombre_de_face
     
     
     result = []
-    for _ in range(nb_dice):
-        result.append(randint(1, int(nb_face)))
+    for _ in range(int(nb_dice)):
+        result.append(random.randint(1, int(nb_face)))
     
     result_str = f"🎲 Résultat pour {nb_dice} dé(s) à {nb_face} faces :\n"
-    result_str += ",".join(map(str, result)) + "\n"
+    result_str += ", ".join(map(str, result)) + "\n"
     result_str += f"**Total : ** {sum(result)}" 
     await interaction.response.send_message(result_str)
 
