@@ -15,59 +15,62 @@ from discord import app_commands
 
 
 
+va = ['va', 'doit', 'aimerait', 'est en train de']
+lors = ['lors du', 'pendant le', 'après le', 'après avoir programmé le']
+grace=['grâce au', 'avec l\'aide du', 'en utilisant le', 'en sappuyant sur le']
 
 load_dotenv() # Load the .env file with environment variables like DISCORD_TOKEN
 
 # Create a bot instance setting the intents aka the permissions the bot will have
 intents = discord.Intents.default()
+intents.message_content = True
+
+#Test command
 client = discord.Client(intents=intents)
 tree = app_commands.CommandTree(client)
 
-# Pour vérifier que le bot soit up I guess
 @tree.command(
-    name="bonjour",
-    description="Saluer le bot",
+    name="testmsg",
+    description="My first application Command",
     guild=discord.Object(id=1304023564956995634)
 )
-async def bonjour(interaction):
-  await interaction.response.send_message(f"Bonjour {interaction.user.display_name} !\nJe suis prêt à bullshit !")
+async def first_command(interaction):
+    await interaction.response.send_message("Hello!")
 
 
-# Parce qu'on lui dit pas assez
-@tree.command(
-    name="to",
-    description="Il rayonne aujourd'hui ce bo TO",
-    guild=discord.Object(id=1304023564956995634)
-)
-async def TO(interaction):
-  await interaction.response.send_message("TO y est bo")
+@client.event
+async def on_ready():
+    await tree.sync(guild=discord.Object(id=1304023564956995634))
+    print("Ready!")
+
+
+# Create the bot instance with the command prefix and the intents
+# All functions that has the @bot.command() decorator will be considered as commands automatically
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+# Debug message to check if the bot is ready
+@bot.command()
+async def bonjour(ctx):
+  await ctx.send(f"Bonjour {ctx.author} !\nJe suis prêt à bullshit !")
 
 # Command to generate a funny bullshit sentence from the website https://www.bullshitor.com/
-va = ['va', 'doit', 'aimerait', 'est en train de']
-lors = ['lors du', 'pendant le', 'après le', 'après avoir programmé le']
-grace=['grâce au', 'avec l\'aide du', 'en utilisant le', 'en sappuyant sur le']
-
-@tree.command(
-    name="bullshit",
-    description="Créer une phrase full bullshit avant le Q2 en respecter les KPI",
-    guild=discord.Object(id=1304023564956995634)
-)
-async def bullshit(interaction):
+@bot.command()
+async def bullshit(ctx):
   bullshit_job = requests.get('https://www.bullshitor.com/bullshit_job.php')
   bullshit_phrase = requests.get('https://www.bullshitor.com/bullshit_phrase.php')
   bullshit_meeting = requests.get('https://www.bullshitor.com/bullshit_meeting.php')
   bullshit_tool = requests.get('https://www.bullshitor.com/bullshit_tool.php')
   master_bullshit = "Le " + bullshit_job.text + random.choice(va) +" " + bullshit_phrase.text.lower() + random.choice(lors)+" " + bullshit_meeting.text.lower() + random.choice(grace) +" " + bullshit_tool.text.lower() + "."
-  await interaction.response.send_message(master_bullshit)
+  await ctx.send(master_bullshit)
 
+#TO
+@bot.command()
+async def TO(ctx):
+  await ctx.send("TO y est bo")
 
 # Command to generate a random fact from the website https://www.secouchermoinsbete.fr/
-@tree.command(
-    name="le_savais_tu",
-    description="Le savais tu que tu le savais ?",
-    guild=discord.Object(id=1304023564956995634)
-)
-async def le_savais_tu(interaction):
+@bot.command()
+async def le_savais_tu(ctx):
   url = "https://api.secouchermoinsbete.fr/random"
   session = requests.Session()
   response = session.get(url)
@@ -76,43 +79,30 @@ async def le_savais_tu(interaction):
   data = soup.find('div', {'class': 'anecdote-content-wrapper'})
   content = "Est-ce que tu le savais-tu ?\n\n" + data.find('a').text
   content = content.replace("\n                    En savoir plus", "")
-  await interaction.response.send_message(content)
-  await interaction.channel.send("https://tenor.com/view/skeletor-until-we-meet-again-goodbye-gif-7594892226715043729")
- 
-
+  await ctx.send(content)
+  await ctx.send("https://tenor.com/view/skeletor-until-we-meet-again-goodbye-gif-7594892226715043729")
 
 # Command to throw a dice with a number of faces given by the user (between 1 and n)
-@tree.command(
-    name="dé",
-    description="Jette un dé en fonction du nombre donné",
-    guild=discord.Object(id=1304023564956995634)
-)
-async def d(interaction: discord.Interaction, nombre_de_faces: str):
-    dice = nombre_de_faces
+@bot.command()
+async def d(ctx, *, dice: str):
     
     if not dice.isdigit() or int(dice) < 1:
-        await interaction.response.send_message("Le dé doit être un nombre entier positif. Exemple : `!d 6`")
+        await ctx.send("Le dé doit être un nombre entier positif. Exemple : `!d 6`")
         return
     
     if int(dice) > 100000:
-        await interaction.response.send_message("Arrête de jouer au plus con. Choisis un dé avec moins de 100 000 faces.")
+        await ctx.send("Arrête de jouer au plus con. Choisis un dé avec moins de 100 000 faces.")
         return
     
     result = random.randint(1, int(dice))
-    await interaction.response.send_message(f"🎲 Résultat du dé à {dice} faces : {result}")
+    await ctx.send(f"🎲 Résultat du dé à {dice} faces : {result}")
 
-
-# Calculer le sommeil
-@tree.command(
-    name="dodo",
-    description="Pour savoir à quel point c'est la merde",
-    guild=discord.Object(id=1304023564956995634)
-)
-async def dodo(interaction: discord.Interaction, heure_reveil: str = None):
+@bot.command()
+async def dodo(ctx, *, heure_reveil: str = None):
     """Calculer le temps de sommeil en fonction de l'heure de réveil"""
 
     if not heure_reveil:
-        await interaction.response.send_message("C'est grâce mat' demain. Fais comme tu veux chef.")
+        await ctx.send("C'est grâce mat' demain. Fais comme tu veux chef.")
         return
     
     # Temp timezone fix for Paris
@@ -127,24 +117,22 @@ async def dodo(interaction: discord.Interaction, heure_reveil: str = None):
         if heure_reveil < heure_actuelle:
             heure_reveil += timedelta(days=1)
     except ValueError:
-        await interaction.response.send_message("Format d'heure invalide. Utilisez HH:MM (ex: 07:30)")
+        await ctx.send("Format d'heure invalide. Utilisez HH:MM (ex: 07:30)")
         return
 
     temps_sommeil = heure_reveil - heure_actuelle
 
     heures_sommeil = temps_sommeil.total_seconds() // 3600
     minutes_sommeil = (temps_sommeil.total_seconds() % 3600) // 60
-
-    tempsDeCalculer = f"{interaction.user.display_name}, si tu vas te coucher maintenant, tu auras {str(int(heures_sommeil))} heures et {str(int(minutes_sommeil))} minutes de sommeil."
+    await ctx.send(f"{ctx.author.mention}, si tu vas te coucher maintenant, tu auras {str(int(heures_sommeil))} heures et {str(int(minutes_sommeil))} minutes de sommeil.")
 
     if heures_sommeil >= 6:
-        await interaction.response.send_message(f"{tempsDeCalculer}\nEn vrai t'es large.")
+        await ctx.send("En vrai t'es large.")
     elif heures_sommeil >= 4:
-        await interaction.response.send_message(f"{tempsDeCalculer}\nC'est vraiment l'heure de dormir là.")
+        await ctx.send("C'est vraiment l'heure de dormir là.")
     else:
-        await interaction.response.send_message(f"{tempsDeCalculer}\nEn vrai c'est trop tard, dors pas.")
+        await ctx.send("En vrai c'est trop tard, dors pas.")
         
-
 ### PENDU ###
 
 # Reset the hebdo leaderboard
@@ -172,7 +160,7 @@ def load_leaderboard():
 # Load the hebdo leaderboard from the file "hebdo_leaderboard.json"
 def load_hebdo_leaderboard():
     try:
-        f = open("/var/www/bullshiter/data/hebdo_leaderboard.json",)
+        f = open("data/hebdo_leaderboard.json",)
         return json.load(f)
     except FileNotFoundError:
         return {}
@@ -198,22 +186,26 @@ def leaderboard_word_attempt(user_id, success: bool):
     hebdo_leaderboard_data[user_id]["words"]["total"] += 1
     
 def save_leaderboards():
-    with open("/var/www/bullshiter/data/leaderboard.json", "w") as f:
+    with open("data/leaderboard.json", "w") as f:
         json.dump(leaderboard_data, f)
-    with open("/var/www/bullshiter/data/hebdo_leaderboard.json", "w") as f:
+    with open("data/hebdo_leaderboard.json", "w") as f:
         json.dump(hebdo_leaderboard_data, f)
 
-async def send_leaderboard(type):
+async def send_leaderboard(ctx, type):
     if type == "all_time":
         data = leaderboard_data
         title = "📈 Classement général"
     elif type == "hebdo":
         data = hebdo_leaderboard_data
         title = "📅 Classement de la semaine" \
-        "\n\n*Le classement hebdomadaire est remis à zéro tous les vendredis à 19h30*"
+        "\n\n*Le classement hebdomadaire est remis à zéro tous les mercredis à 12h00*"
+
+    if not ctx:
+        ctx = bot.get_channel(os.getenv("DISCORD_MAIN_CHANNEL"))
 
     if not data:
-        return "Aucune partie de pendu n'a été jouée."
+        await ctx.send("Aucune partie de pendu n'a été jouée.")
+        return
     
     message = f"{title} :\n\n"
 
@@ -244,22 +236,16 @@ async def send_leaderboard(type):
         message += i == 0 and "🥇 " or i == 1 and "🥈 " or i == 2 and "🥉 " or f"{i + 1}e  "
         message += f"**{user['name']} :** {user['started']} partie(s)\n"
 
-    return message
-
+    await ctx.send(message)
     
 leaderboard_data = load_leaderboard()
 hebdo_leaderboard_data = load_hebdo_leaderboard()
 
 games_pendu = {}  # Dict storing the ongoing games. Key: channel ID, Value: game data
 
-
 # Command to start a new game of "pendu"
-@tree.command(
-    name="pendu",
-    description="Lance un pendu. /pendu leaderboard ou all_time_leaderboard pour le classement semaine/all time",
-    guild=discord.Object(id=1304023564956995634)
-)
-async def pendu(interaction: discord.Interaction, command: str = None):
+@bot.command()
+async def pendu(ctx, *, command: str = None):
 
     global leaderboard_data
     global hebdo_leaderboard_data
@@ -269,12 +255,12 @@ async def pendu(interaction: discord.Interaction, command: str = None):
 
     if command == "all_time_leaderboard":
         """Afficher le classement général du pendu"""
-        await interaction.response.send_message(await send_leaderboard("all_time"))
+        await send_leaderboard(ctx, "all_time")
         return
     
     if command == "hebdo_leaderboard" or command == "leaderboard":
         """Afficher le classement du pendu"""
-        await interaction.response.send_message( await send_leaderboard("hebdo"))
+        await send_leaderboard(ctx, "hebdo")
         return
 
     """Démarrer une nouvelle partie de pendu"""
@@ -292,7 +278,7 @@ async def pendu(interaction: discord.Interaction, command: str = None):
       else:
         hidden_word.append("\_")
     
-    games_pendu[interaction.channel_id] = {
+    games_pendu[ctx.channel.id] = {
         "word": word,
         "hidden": hidden_word,
         "attempts": 6,
@@ -300,7 +286,7 @@ async def pendu(interaction: discord.Interaction, command: str = None):
     }
 
     initial_stats = {
-        "name": interaction.user.display_name,
+        "name": ctx.author.name,
         "started": 1,
         "letters": {
             "success": 0,
@@ -314,37 +300,43 @@ async def pendu(interaction: discord.Interaction, command: str = None):
         }
     }
 
-    if str(interaction.user.id) not in hebdo_leaderboard_data:
-        hebdo_leaderboard_data[str(interaction.user.id)] = initial_stats
+    if str(ctx.author.id) not in hebdo_leaderboard_data:
+        hebdo_leaderboard_data[str(ctx.author.id)] = initial_stats
     else:
-        hebdo_leaderboard_data[str(interaction.user.id)]["started"] += 1
+        hebdo_leaderboard_data[str(ctx.author.id)]["started"] += 1
 
-    if str(interaction.user.id) not in leaderboard_data:
-        leaderboard_data[str(interaction.user.id)] = initial_stats
+    if str(ctx.author.id) not in leaderboard_data:
+        leaderboard_data[str(ctx.author.id)] = initial_stats
     else:
-        leaderboard_data[str(interaction.user.id)]["started"] += 1
+        leaderboard_data[str(ctx.author.id)]["started"] += 1
 
     save_leaderboards()
     
-    await interaction.response.send_message(f"🔤 Nouveau jeu de pendu !\nMot à deviner ({str(len(hidden_word))}) : {' '.join(hidden_word)} \nErreurs restantes : 6")
+    await ctx.send(f"🔤 Nouveau jeu de pendu !\nMot à deviner ({str(len(hidden_word))}) : {' '.join(hidden_word)} \nErreurs restantes : 6")
 
+# Alias for the command "lettre"
+@bot.command()
+async def l(ctx, letter: str):
+    await lettre(ctx, letter)
 
-async def lettreFunc(interaction: discord.Interaction, letter: str):
+# Command to propose a letter for the "pendu" game
+@bot.command()
+async def lettre(ctx, letter: str):
     """Proposer une lettre pour le pendu"""
-    if interaction.channel_id not in games_pendu:
-        await interaction.response.send_message(content="Aucune partie en cours. Tapez `!pendu` pour commencer.", ephemeral=True)
+    if ctx.channel.id not in games_pendu:
+        await ctx.send("Aucune partie en cours. Tapez `!pendu` pour commencer.")
         return
     
-    game = games_pendu[interaction.channel_id]
+    game = games_pendu[ctx.channel.id]
     
     if len(letter) != 1 or not letter.isalpha():
-        await interaction.response.send_message(content="Merci d'entrer une seule lettre.", ephemeral=True)
+        await ctx.send("Merci d'entrer une seule lettre.")
         return
     
     letter = letter.upper()
     
     if letter in game["used_letters"]:
-        await interaction.response.send_message(content=f"⚠️ La lettre {letter} a déjà été utilisée.", ephemeral=True)
+        await ctx.send(f"⚠️ La lettre {letter} a déjà été utilisée.")
         return
     
     game["used_letters"].add(letter)
@@ -354,99 +346,71 @@ async def lettreFunc(interaction: discord.Interaction, letter: str):
             if unidecode(char) == unidecode(letter):
                 game["hidden"][i] = char
         if "\_" not in game["hidden"]:
-            await interaction.response.send_message(f"🎉 Bravo ! Le mot était **{game['word']}** !")
+            await ctx.send(f"🎉 Bravo ! Le mot était **{game['word']}** !")
 
-            leaderboard_word_attempt(str(interaction.user.id), True)
+            leaderboard_word_attempt(str(ctx.author.id), True)
             save_leaderboards()
 
-            del games_pendu[interaction.channel_id]
+            del games_pendu[ctx.channel.id]
         else:
-            await interaction.response.send_message(f"✅ Bien joué ! {' '.join(game['hidden'])}")
+            await ctx.send(f"✅ Bien joué ! {' '.join(game['hidden'])}")
 
-            leaderboard_letter_attempt(str(interaction.user.id), True)
+            leaderboard_letter_attempt(str(ctx.author.id), True)
             save_leaderboards()
     else:
         game["attempts"] -= 1
 
         if game["attempts"] == 0:
-            await interaction.response.send_message(f"❌ Perdu ! Le mot était **{game['word']}**...")
+            await ctx.send(f"❌ Perdu ! Le mot était **{game['word']}**...")
 
-            leaderboard_word_attempt(str(interaction.user.id), False)
+            leaderboard_word_attempt(str(ctx.author.id), False)
             save_leaderboards()
 
-            del games_pendu[interaction.channel_id]
+            del games_pendu[ctx.channel.id]
         else:
-            await interaction.response.send_message(f"❌ Mauvais choix ! Erreurs restantes : {game['attempts']}\n{' '.join(game['hidden'])}")
+            await ctx.send(f"❌ Mauvais choix ! Erreurs restantes : {game['attempts']}\n{' '.join(game['hidden'])}")
 
-            leaderboard_letter_attempt(str(interaction.user.id), False)
+            leaderboard_letter_attempt(str(ctx.author.id), False)
             save_leaderboards()
-
-
-# Alias for the command "lettre"
-@tree.command(
-    name="l",
-    description="Propose une lettre pour le pendu",
-    guild=discord.Object(id=1304023564956995634)
-)
-async def l(interaction: discord.Interaction, lettre: str):
-    await lettreFunc(interaction, lettre)
-
-
-# Command to propose a letter for the "pendu" game
-@tree.command(
-    name="lettre",
-    description="Propose une lettre pour le pendu",
-    guild=discord.Object(id=1304023564956995634)
-)
-async def lettrefulll(interaction: discord.Interaction, lettre: str):
-    await lettreFunc(interaction, lettre)
-
-
 
 # Command to propose a word for the "pendu" game
-@tree.command(
-    name="mot",
-    description="Propose un mot pour le pendu",
-    guild=discord.Object(id=1304023564956995634)
-)
-async def mot(interaction: discord.Integration, mot: str):
-    word = mot
+@bot.command()
+async def mot(ctx, *, word: str):
     """Proposer un mot pour le pendu"""
-    if interaction.channel_id not in games_pendu:
-        await interaction.response.send_message("Aucune partie en cours. Tapez `!pendu` pour commencer.")
+    if ctx.channel.id not in games_pendu:
+        await ctx.send("Aucune partie en cours. Tapez `!pendu` pour commencer.")
         return
     
-    game = games_pendu[interaction.channel_id]
+    game = games_pendu[ctx.channel.id]
     
     if unidecode(word.strip().upper()) == unidecode(game["word"].strip().upper()):
-        await interaction.response.send_message(f"🎉 Bravo ! Le mot était **{game['word']}** !")
+        await ctx.send(f"🎉 Bravo ! Le mot était **{game['word']}** !")
 
         # For each letter in the hidden word, we increment the success counter
         for i, char in enumerate(game["hidden"]):
             if char == "\_":
                 if game["word"][i] not in game["used_letters"]:
                     game["used_letters"].add(game["word"][i])
-                    leaderboard_letter_attempt(str(interaction.user.id), True)
+                    leaderboard_letter_attempt(str(ctx.author.id), True)
 
-        leaderboard_word_attempt(str(interaction.user.id), True)
+        leaderboard_word_attempt(str(ctx.author.id), True)
         save_leaderboards()
 
-        del games_pendu[interaction.channel_id]
+        del games_pendu[ctx.channel.id]
     else:
 
         # TODO: Reduce all multiple letters to 1 unique letter
         for i, char in enumerate(word):
             if unidecode(char) not in unidecode(game["word"]):
-                leaderboard_letter_attempt(str(interaction.user.id), False)
+                leaderboard_letter_attempt(str(ctx.author.id), False)
         save_leaderboards()
 
         game["attempts"] -= 1
         if game["attempts"] == 0:
-            await interaction.response.send_message(f"❌ Perdu ! Le mot était **{game['word']}**...")
-            del games_pendu[interaction.channel_id]
+            await ctx.send(f"❌ Perdu ! Le mot était **{game['word']}**...")
+            del games_pendu[ctx.channel.id]
         else:
-            await interaction.response.send_message(f"❌ Mauvais choix ! Erreurs restantes : {game['attempts']}\n{' '.join(game['hidden'])}")
-
+            await ctx.send(f"❌ Mauvais choix ! Erreurs restantes : {game['attempts']}\n{' '.join(game['hidden'])}")
 
 ### END PENDU ###
 
@@ -455,13 +419,8 @@ async def mot(interaction: discord.Integration, mot: str):
 game_telephone = {}  # Global dict storing the ongoing game.
 
 # Unique command to manage the "telephone arabe" game
-@tree.command(
-    name="telephone",
-    description="Telephone arabe, new > créer, join > renjoindre, start >> lancer,  send msg > ajouter votre histoire",
-    guild=discord.Object(id=1304023564956995634)
-)
-async def telephone(interaction: discord.Interaction, commande: str = None):
-    command = commande
+@bot.command()
+async def telephone(ctx, *, command: str = None):
 
     global game_telephone  # Use the global variable
 
@@ -471,12 +430,12 @@ async def telephone(interaction: discord.Interaction, commande: str = None):
 
         maxTurn = command.split(" ")[1] if len(command.split(" ")) > 1 else 3
         if not str(maxTurn).isdigit():
-            await interaction.response.send_message("Le nombre de tours doit être un nombre.")
+            await ctx.send("Le nombre de tours doit être un nombre.")
             return
         maxTurn = int(maxTurn)
         if maxTurn > 10:
             maxTurn = 10
-            await interaction.response.send_message("Ce sera 10 tours, t'abuses frérot.")
+            await ctx.send("Ce sera 10 tours, t'abuses frérot.")
 
         game_telephone = {
             "phrase": "",
@@ -484,77 +443,76 @@ async def telephone(interaction: discord.Interaction, commande: str = None):
             "current": None,
             "turn": 0,
             "maxTurn": maxTurn,
-            "channel": interaction.channel,
+            "channel": ctx,
             "started": False
         }
         
-        await interaction.response.send_message(":telephone: Nouveau jeu de téléphone arabe !\nTapez `/telephone join` pour participer et `/telephone start` pour commencer.")
+        await ctx.send("📞 Nouveau jeu de téléphone arabe !\nTapez `!telephone join` pour participer et `!telephone start` pour commencer.")
 
     # Join the game
     elif command == "join":
         """Rejoindre une partie de téléphone arabe"""
 
         if not game_telephone:
-            await interaction.response.send_message("Aucune partie en cours. Tapez `/telephone new` pour en créer une.")
+            await ctx.send("Aucune partie en cours. Tapez `!telephone new` pour en créer une.")
             return
 
-        if interaction.user in game_telephone["players"]:
-            await interaction.response.send_message(content=f"{interaction.user.display_name}, vous êtes déjà inscrit.", ephemeral=True)
+        if ctx.author in game_telephone["players"]:
+            await ctx.send(f"{ctx.author.mention}, vous êtes déjà inscrit.")
             return
         
         if game_telephone["started"]:
-            await interaction.response.send_message(content="La partie a déjà commencé.", ephemeral=True)
+            await ctx.send("La partie a déjà commencé.")
             return
         
-        game_telephone["players"].append(interaction.user)
+        game_telephone["players"].append(ctx.author)
 
         # Send a DM to the player
-        #await interaction.user.send(f"✅ Vous avez rejoint la partie de téléphone arabe dans {interaction.channel} !")
+        await ctx.author.send(f"✅ Vous avez rejoint la partie de téléphone arabe dans {ctx.channel} !")
         
-        await interaction.response.send_message(f"✅ {interaction.user.mention} a rejoint la partie !")
+        await ctx.send(f"✅ {ctx.author.mention} a rejoint la partie !")
 
     # Start the game
     elif command == "start":
         """Démarrer une partie de téléphone arabe"""
         
         if not game_telephone or len(game_telephone["players"]) < 2:
-            await interaction.response.send_message("Il faut au moins 2 joueurs pour commencer une partie de téléphone arabe.")
+            await game_telephone["channel"].send("Il faut au moins 2 joueurs pour commencer. Tapez `!telephone join` pour participer.")
             return
         
-        await interaction.response.send_message(content="Lancement de la partie de téléphone arabe.", ephemeral=True)
         random.shuffle(game_telephone["players"])
         first_player = game_telephone["players"][0]
         game_telephone["current"] = first_player
         game_telephone["started"] = True
 
-        #await first_player.send(":telephone: Vous commencez la partie de téléphone arabe !\nÉcrivez le début de l'histoire. Le prochain joueur la continuera à partir de vos derniers mots.\nUtilisez `/telephone send votre-histoire`.\n*Vous devez écrire 5 mots au minimum")        
+        await first_player.send(":telephone: Vous commencez la partie de téléphone arabe !\nÉcrivez le début de l'histoire. Le prochain joueur la continuera à partir de vos derniers mots.\nUtilisez `!telephone send votre-histoire`.\n*Vous devez écrire 5 mots au minimum")        
         await game_telephone["channel"].send(f":telephone: La partie de téléphone arabe commence avec {first_player.mention}")
 
     # Send a part of the story (only in DM)
     elif command.startswith("send "):
         """Envoyer un message pour la partie de téléphone arabe depuis les DM"""
 
-        #if not isinstance(interaction.channel, discord.DMChannel):
-        #    await interaction.response.send_message("Envoyez votre message depuis les messages privés.")
-        #    return
-        
-        if interaction.user not in game_telephone["players"]:
-            await interaction.response.send_message(content="Vous ne faites pas partie de la partie de téléphone arabe.", ephemeral=True)
+        if not isinstance(ctx.channel, discord.DMChannel):
+            await ctx.send("Envoyez votre message depuis les messages privés.")
             return
         
-        if interaction.user != game_telephone["current"]:
-            await interaction.response.send_message(content="Ce n'est pas votre tour de jouer.", ephemeral=True)
+        if ctx.author not in game_telephone["players"]:
+            await ctx.send("Vous ne faites pas partie de la partie de téléphone arabe.")
+            return
+        
+        if ctx.author != game_telephone["current"]:
+            await ctx.send("Ce n'est pas votre tour de jouer.")
             return
 
         # Ajout du message à la phrase
         message_content = command.replace("send ", "")
         if message_content.count(" ") < 4:
-            await interaction.response.send_message(content="Vous devez écrire au moins 5 mots.", ephemeral=True)
+            await ctx.send("Vous devez écrire au moins 5 mots.")
             return
         game_telephone["phrase"] += " " + message_content
 
         # Passage au joueur suivant
-        next_index = (game_telephone["players"].index(interaction.user) + 1) % len(game_telephone["players"])
+        next_index = (game_telephone["players"].index(ctx.author) + 1) % len(game_telephone["players"])
 
         # Si le dernier joueur a joué, on incrémente le tour
         if next_index == 0:
@@ -562,7 +520,7 @@ async def telephone(interaction: discord.Interaction, commande: str = None):
 
         game_telephone["current"] = game_telephone["players"][next_index]
 
-        await interaction.response.send_message(content="Histoire prise en compte ! Passage à la personne suivante", ephemeral=True)
+        await ctx.send("Histoire prise en compte ! Passage à la personne suivante")
 
         # Récupération des 3 derniers mots pour les afficher
         last_words = game_telephone["phrase"].split()[-3:]
@@ -577,9 +535,12 @@ async def telephone(interaction: discord.Interaction, commande: str = None):
             await game_telephone["channel"].send(f":telephone: Message envoyé ! La partie de téléphone arabe est terminée !")
             await stop_telephone(game_telephone["channel"])
         elif game_telephone["turn"] >= (game_telephone["maxTurn"] - 1) and next_index == (len(game_telephone["players"]) - 1):
-            await game_telephone["channel"].send(f":telephone: Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de **terminer** l'histoire.\nVoici la fin de la phrase précédente : ||{end_of_phrase}||\nUtilisez `/telephone send votre-histoire")
+            await game_telephone["channel"].send(f":telephone: Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de **terminer** l'histoire.")
+            await game_telephone["current"].send(f":telephone: C'est à vous de **terminer** l'histoire à partir de :\n{end_of_phrase}\nUtilisez `!telephone send votre-histoire`.")
         else:
-            await game_telephone["channel"].send(f":telephone: Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de continuer l'histoire.\nVoici la fin de la phrase précédente : ||{end_of_phrase}||\nUtilisez `/telephone send votre-histoire")
+            await game_telephone["channel"].send(f":telephone: Message envoyé ! C'est au tour de {game_telephone['players'][next_index].mention} de continuer l'histoire.")
+            await game_telephone["current"].send(f":telephone: C'est à votre tour dans la partie de téléphone arabe !\nContinuez l'histoire à partir de :\n{end_of_phrase}\nUtilisez `!telephone send votre-histoire`.")
+
     # Stop the game
     elif command == "stop":
         """Arrêter une partie de téléphone arabe"""
@@ -596,16 +557,20 @@ async def stop_telephone(ctx):
     
     await ctx.send(f":telephone: Phrase finale : \n\n{game_telephone['phrase']}")
 
+    for user in game_telephone["players"]:
+        await user.send(f":telephone: Phrase finale : \n\n{game_telephone['phrase']}")
+
     game_telephone = {}  # Réinitialisation
 
-### FIN TELEPHONE ARABE ###bot
+### FIN TELEPHONE ARABE ###
 
-
-
-@client.event
-async def on_ready():
-    await tree.sync(guild=discord.Object(id=1304023564956995634))
-    print("Ready!")
+@bot.command()
+async def shutdown(ctx):
+    """Shutdown the bot"""
+    await ctx.send("Arrêt du bot...")
+    await bot.close()
+    exit()
 
 token = os.getenv("DISCORD_TOKEN")
+bot.run(token)
 client.run(token)

@@ -18,7 +18,7 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 # Load the hebdo leaderboard from the file "hebdo_leaderboard.json"
 def load_hebdo_leaderboard():
     try:
-        f = open("data/hebdo_leaderboard.json",)
+        f = open("/var/www/bullshiter/data/hebdo_leaderboard.json",)
         return json.load(f)
     except FileNotFoundError:
         return {}
@@ -75,7 +75,7 @@ async def cronjob():
     await send_leaderboard(channel) # Send the leaderboard to the channel
 
     # Reset the leaderboard
-    with open("data/hebdo_leaderboard.json", "w") as f:
+    with open("/var/www/bullshiter/data/hebdo_leaderboard.json", "w") as f:
         json.dump({}, f)
 
 @bot.event
