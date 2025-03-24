@@ -45,7 +45,7 @@ def get_players_hand_display():
             display += f"**{player.ctx.display_name}** : couché\n"
     return display[:-1]
 
-def get_player(ctx):
+def get_player(ctx) -> PokerPlayer:
     if not ctx.name in [player.ctx.name for player in game["players"]]:
         print(f"Player {ctx.display_name} not in the game.")
         return None
@@ -74,7 +74,7 @@ def reset_actual_bets():
 
 def should_draw_river():
     actual_bets_sum = sum([player.actual_bet for player in get_remaining_players()])
-    triggering_player = game["players"][game["players"].index(game["big_blind"] + 1 % len(game["players"]))]
+    triggering_player = game["players"][(game["players"].index(game["big_blind"]) + 1) % len(game["players"])]
     return actual_bets_sum == len(get_remaining_players() * game["last_raise"]) and game["next_player"] == triggering_player
 
 # ---------------------------------------------------------
@@ -145,18 +145,18 @@ async def start(ctx):
     await ctx.send(f"La partie commence, c'est à {game["next_player"].ctx.mention} de jouer")
  
 async def fold_hand(ctx):
-    if ctx.author != game["next_player"]["ctx"]:
-        await ctx.send(f"Non, c'est au tour de {game["next_player"]["ctx"].mention}")
+    if ctx.author != game["next_player"].ctx:
+        await ctx.send(f"Non, c'est au tour de {game["next_player"].ctx.mention}")
         return
     
-    game["next_player"]["is_folded"] = True
-    await ctx.send(f"{game["next_player"]["ctx"].mention} s'est couché.")
+    game["next_player"].is_folded = True
+    await ctx.send(f"{game["next_player"].ctx.mention} s'est couché.")
 
-    set_next_player(game["next_player"])
+    await set_next_player(ctx, game["next_player"])
 
 async def raise_hand(ctx, amount: int):
-    if ctx.author != game["next_player"]["ctx"]:
-        await ctx.send(f"Non, c'est au tour de {game["next_player"]["ctx"].mention}")
+    if ctx.author != game["next_player"].ctx:
+        await ctx.send(f"Non, c'est au tour de {game["next_player"].ctx.mention}")
         return
     
     if amount < game["big_blind_amount"] or amount <= game["last_raise"]:
@@ -164,24 +164,30 @@ async def raise_hand(ctx, amount: int):
         return
     
     game["last_raise"] = amount
-    game["pot"] += get_player(ctx).take_from_stack(amount)
+    player = get_player(ctx.author)
+    game["pot"] += player.take_from_stack(amount)
+    player.actual_bet = amount
 
-    set_next_player(game["next_player"])
+    await set_next_player(ctx, game["next_player"])
 
 async def call_or_check_hand(ctx):
-    if ctx.author != game["next_player"]["ctx"]:
-        await ctx.send(f"Non, c'est au tour de {game["next_player"]["ctx"].mention}")
+    if ctx.author != game["next_player"].ctx:
+        await ctx.send(f"Non, c'est au tour de {game["next_player"].ctx.mention}")
         return
     
-    game["pot"] += get_player(ctx).take_from_stack(game["last_raise"])
+    player = get_player(ctx.author)
+    game["pot"] += player.take_from_stack(game["last_raise"] - player.actual_bet)
+    player.actual_bet += game["last_raise"] - player.actual_bet
 
     await display(ctx, False)
-    set_next_player(game["next_player"])
+    await set_next_player(ctx, game["next_player"])
 
 async def set_next_player(ctx, player):
     if len(get_folded_players()) == len(game["players"]) - 1:
+        winner = get_remaining_players()[0]
         await ctx.send(f"Bravo à {winner.ctx.mention} ! Tu as gagner ce tour. Veux-tu dévoiler tes cartes ? (`!poker reveal oui` ou `!poker reveal non`)")
         game["is_round_finished"] = True
+        print("coucou")
         return
     
     if len(game["river"]) == 5 and should_draw_river():
@@ -194,13 +200,14 @@ async def set_next_player(ctx, player):
 
     current_player_idx = game["players"].index(player)
     next_player = game["players"][(current_player_idx + 1) % len(game["players"])]
+    print(f"le prochain joueur est :{next_player.ctx.name}")
 
-    if next_player["is_folded"]:
-        await ctx.send(f"{next_player["ctx"].mention} is folded.")
-        set_next_player(ctx, next_player)
+    if next_player.is_folded:
+        await ctx.send(f"{next_player.ctx.mention} is folded.")
+        await set_next_player(ctx, next_player)
     else:
         game["next_player"] = next_player
-        await ctx.send(f"C'est au tour de {next_player["ctx"].mention} de jouer.")
+        await ctx.send(f"C'est au tour de {next_player.ctx.mention} de jouer.")
 
 async def display(ctx, display_player_hand: bool):
     to_display = [get_player_line(), get_pot_display(), get_last_raise_display()]
@@ -230,8 +237,8 @@ async def init_next_round(ctx, reveal):
     game["shuffled_cards"] = CARDS.copy()
     random.shuffle(game["shuffled_cards"])
     game["river"] = []
-    game["small_blind"] = game["players"][game["players"].index(game["small_blind"]) + 1 % len(game["players"])]
-    game["big_blind"] = game["players"][game["players"].index(game["big_blind"]) + 1 % len(game["players"])]
+    game["small_blind"] = game["players"][(game["players"].index(game["small_blind"]) + 1) % len(game["players"])]
+    game["big_blind"] = game["players"][(game["players"].index(game["big_blind"]) + 1) % len(game["players"])]
     game["next_player"] = game["small_blind"]
     
     for player in game["players"]:

@@ -548,7 +548,7 @@ async def shutdown(ctx):
 ### POKER DEBUT ###
 
 @bot.command()
-async def poker(ctx, command: str):
+async def poker(ctx, command: str, arg: str = None):
     if command == "new":
         await init(ctx)
     if command == "join":
@@ -558,11 +558,13 @@ async def poker(ctx, command: str):
     if command == "start":
         await start(ctx)
     if command.startswith("reveal"):
-        await init_next_round(ctx, command.split()[1])
+        await init_next_round(ctx, arg)
     if command == "call":
         await call_or_check_hand(ctx)
-    if command.startwith("raise"):
-        await raise_hand(ctx, int(command.split()[1]))
+    if command.startswith("raise") and arg != None:
+        await raise_hand(ctx, int(arg))
+    elif command.startswith("raise") and arg == None:
+        await ctx.send("Tu dois préciser le montant de la relance.")
     if command == "endgame":
         await end_game(ctx)
 
