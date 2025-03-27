@@ -295,11 +295,17 @@ async def pendu(interaction: discord.Interaction, command: str = None):
         return
 
     """Démarrer une nouvelle partie de pendu"""
-    r = requests.get('https://trouve-mot.fr/api/random')
-    if len(r.json()[0]['name']) < 5:
-        r = requests.get('https://trouve-mot.fr/api/random')
-    word = r.json()[0]['name'].upper()
-
+    # r = requests.get('https://trouve-mot.fr/api/random')
+    # if len(r.json()[0]['name']) < 5:
+    #     r = requests.get('https://trouve-mot.fr/api/random')
+    # word = r.json()[0]['name'].upper()
+    with open("./data/mots.txt", 'r', encoding="utf-8") as file:
+        lines = file.readlines()
+    word = random.choice(lines).strip()
+    while len(word) < 5:
+        word = random.choice(lines).strip()
+        
+    word = word.upper()
     hidden_word = []
     for char in word:
       if char == 'Œ':
