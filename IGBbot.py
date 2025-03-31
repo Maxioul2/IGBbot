@@ -133,7 +133,7 @@ async def dodo(interaction: discord.Interaction, heure_reveil: str = None):
         return
     
     # Temp timezone fix for Paris
-    heure_actuelle = datetime.now() + timedelta(hours=1)
+    heure_actuelle = datetime.now()
 
     try:
         if len(re.split(r'[:h]', heure_reveil)) != 2:
@@ -227,7 +227,7 @@ async def send_leaderboard(type):
     elif type == "hebdo":
         data = hebdo_leaderboard_data
         title = "📅 Classement de la semaine" \
-        "\n\n*Le classement hebdomadaire est remis à zéro tous les vendredis à 19h30*"
+        "\n\n*Le classement hebdomadaire est remis à zéro tous les lundis à 00h00*"
 
     if not data:
         return "Aucune partie de pendu n'a été jouée."
