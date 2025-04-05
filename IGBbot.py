@@ -11,8 +11,8 @@ import json
 import re
 #Test command
 from discord import app_commands
-
-
+from math import factorial
+from scipy.stats import norm
 
 
 
@@ -87,7 +87,7 @@ async def le_savais_tu(interaction):
     description="Jette un dé en fonction du nombre donné",
     guild=discord.Object(id=1304023564956995634)
 )
-async def d(interaction: discord.Interaction, nombre_de_des: str, nombre_de_faces: str):
+async def d(interaction: discord.Interaction, nombre_de_des: str, nombre_de_faces: str, bonus: str = "0"):
     nb_dice = nombre_de_des
     nb_face = nombre_de_faces
     if not nb_dice.isdigit() or int(nb_dice) < 1:
@@ -110,14 +110,84 @@ async def d(interaction: discord.Interaction, nombre_de_des: str, nombre_de_face
     result = []
     for _ in range(int(nb_dice)):
         result.append(random.randint(1, int(nb_face)))
-    if len(result) > 1:
+    if len(result) > 1 or int(bonus) != 0:
         result_str = f"🎲 Résultat pour {nb_dice}d{nb_face} :\n"
-        result_str += "       " + ", ".join(map(str, result)) + "\n"
-        result_str += f"       **Total : ** {sum(result)}"
+        result_str += "       " + ", ".join(map(str, result))
+        if int(bonus) != 0:
+            result_str += f" (+ {bonus})"
+        result_str += f"\n"
+        result_str += f"       **Total : ** {sum(result, int(bonus))}"
     else:
-        result_str = f"🎲 Résultat pour {nb_dice}d{nb_face} : {sum(result)}"
+        result_str = f"🎲 Résultat pour {nb_dice}d{nb_face}"
+        result_str += f" : {sum(result, int(bonus))}"
+
     await interaction.response.send_message(result_str)
 
+# Command to evaluate the chances of success of a dice roll
+@tree.command(
+    name="chance",
+    description="Évalue les chances de succès d'un lancer de dés",
+    guild=discord.Object(id=1304023564956995634)
+)
+
+async def chance(interaction: discord.Interaction, nombre_de_des: str, nombre_de_faces: str, limite: str, bonus: str = "0"):
+    def probability_more_than_x(x, y, z):
+        """
+        Approximate the probability (in percentage) of rolling more than x
+        when rolling y dice with z faces each, with the rule that any die
+        rolling its highest value is rerolled and its new value is added.
+        
+        :param x: The target sum to exceed
+        :param y: The number of dice rolled
+        :param z: The number of faces on each die
+        :return: Approximate probability percentage of rolling more than x
+        """
+        def expected_value(y, z):
+            return y * (z + 1) / 2 + (y * (z / (z - 1)))
+        
+        mean = expected_value(y, z)
+        variance = y * ((z**2 - 1) / 12) * (1 + (z / (z - 1)))
+        std_dev = variance ** 0.5
+        
+        # Using normal approximation
+        probability = 1 - norm.cdf(x, mean, std_dev)
+        
+        return probability * 100
+    
+    if not nombre_de_des.isdigit() or int(nombre_de_des) < 1:
+        await interaction.response.send_message("Le nombre de dés doit être un nombre entier positif. Exemple : `/chance 1 6 10`")
+        return
+    if not nombre_de_faces.isdigit() or int(nombre_de_faces) < 1:
+        await interaction.response.send_message("Le nombre de faces doit être un nombre entier positif. Exemple : `/chance 1 6 10`")
+        return
+    if not limite.isdigit() or int(limite) < 1:
+        await interaction.response.send_message("La limite doit être un nombre entier positif. Exemple : `/chance 1 6 10`")
+        return
+    if not bonus.isdigit():
+        await interaction.response.send_message("Le bonus doit être un nombre entier positif. Exemple : `/chance 1 6 10`")
+        return
+    if int(nombre_de_des) > 100:
+        await interaction.response.send_message("Arrête de jouer au plus con. Choisis un nombre de dés inférieur à 100.")
+        return
+    if int(nombre_de_faces) > 100000:
+        await interaction.response.send_message("Arrête de jouer au plus con. Choisis un dé avec moins de 100 000 faces.")
+        return
+    if int(limite) > 100000:
+        await interaction.response.send_message("Arrête de jouer au plus con. Choisis une limite inférieure à 100 000.")
+        return
+    if int(limite) < int(bonus):
+        await interaction.response.send_message("La limite doit être supérieure au bonus.")
+        return
+    
+    nombre_de_des = int(nombre_de_des)
+    nombre_de_faces = int(nombre_de_faces)
+    limite = int(limite)
+    bonus = int(bonus)
+
+    # Calculate the probability
+    probability = probability_more_than_x(limite - bonus, nombre_de_des, nombre_de_faces)
+
+    await interaction.response.send_message(f"🎲 Probabilité d'obtenir plus de {limite} avec {nombre_de_des}d{nombre_de_faces} (+ {bonus}) : **{probability:.2f}%**")
 
 # Calculer le sommeil
 @tree.command(
@@ -295,17 +365,20 @@ async def pendu(interaction: discord.Interaction, command: str = None):
         return
 
     """Démarrer une nouvelle partie de pendu"""
-    # r = requests.get('https://trouve-mot.fr/api/random')
-    # if len(r.json()[0]['name']) < 5:
-    #     r = requests.get('https://trouve-mot.fr/api/random')
-    # word = r.json()[0]['name'].upper()
+    r = requests.get('https://trouve-mot.fr/api/random')
+    if len(r.json()[0]['name']) < 5:
+        r = requests.get('https://trouve-mot.fr/api/random')
+    word = r.json()[0]['name'].upper()
+    
+    '''
     with open("./data/mots.txt", 'r', encoding="utf-8") as file:
         lines = file.readlines()
     word = random.choice(lines).strip()
     while len(word) < 5:
         word = random.choice(lines).strip()
-        
     word = word.upper()
+    '''
+        
     hidden_word = []
     for char in word:
       if char == 'Œ':
