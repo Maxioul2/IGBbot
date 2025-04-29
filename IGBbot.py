@@ -16,6 +16,10 @@ from scipy.stats import norm
 
 
 
+# POKER
+from IGBPoker import *
+
+
 load_dotenv() # Load the .env file with environment variables like DISCORD_TOKEN
 
 # Create a bot instance setting the intents aka the permissions the bot will have
@@ -702,6 +706,29 @@ async def stop_telephone(ctx):
 async def on_ready():
     await tree.sync(guild=discord.Object(id=1304023564956995634))
     print("Ready!")
+
+### POKER DEBUT ###
+
+@bot.command()
+async def poker(ctx, command: str, arg: str = None):
+    if command == "new":
+        await init(ctx)
+    if command == "join":
+        await join(ctx)
+    if command == "display":
+        await display(ctx, False)
+    if command == "start":
+        await start(ctx)
+    if command.startswith("reveal"):
+        await init_next_round(ctx, arg)
+    if command == "call":
+        await call_or_check_hand(ctx)
+    if command.startswith("raise") and arg != None:
+        await raise_hand(ctx, int(arg))
+    elif command.startswith("raise") and arg == None:
+        await ctx.send("Tu dois préciser le montant de la relance.")
+    if command == "endgame":
+        await end_game(ctx)
 
 token = os.getenv("DISCORD_TOKEN")
 client.run(token)
