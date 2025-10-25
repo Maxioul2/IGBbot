@@ -259,7 +259,7 @@ def load_leaderboard():
 # Load the hebdo leaderboard from the file "hebdo_leaderboard.json"
 def load_hebdo_leaderboard():
     try:
-        f = open("/var/www/bullshiter/data/hebdo_leaderboard.json",)
+        f = open("/home/max/Projets/bullshiter/IGBbot/data/hebdo_leaderboard.json",)
         return json.load(f)
     except FileNotFoundError:
         return {}
@@ -285,9 +285,9 @@ def leaderboard_word_attempt(user_id, success: bool):
     hebdo_leaderboard_data[user_id]["words"]["total"] += 1
     
 def save_leaderboards():
-    with open("/var/www/bullshiter/data/leaderboard.json", "w") as f:
+    with open("/home/max/Projets/bullshiter/IGBbot/data/leaderboard.json", "w") as f:
         json.dump(leaderboard_data, f)
-    with open("/var/www/bullshiter/data/hebdo_leaderboard.json", "w") as f:
+    with open("/home/max/Projets/bullshiter/IGBbot/data/hebdo_leaderboard.json", "w") as f:
         json.dump(hebdo_leaderboard_data, f)
 
 async def send_leaderboard(type):
